@@ -42,7 +42,7 @@ const WeightChart: React.FC<{
       const dateStr = current.toISOString().split('T')[0];
       const month = current.getMonth() + 1;
       const day = current.getDate();
-      const weight = weightMap[dateStr] ?? lastWeight;
+      const weight: number | null = weightMap[dateStr] ?? lastWeight;
       data.push({
         date: dateStr,
         weight,

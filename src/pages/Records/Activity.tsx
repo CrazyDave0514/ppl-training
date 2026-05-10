@@ -234,8 +234,6 @@ const Activity: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const sessions = getSessionsByUser(currentUser.id);
-
   /**
    * 处理删除训练记录
    * @description 弹出确认提示后删除指定记录并刷新列表
