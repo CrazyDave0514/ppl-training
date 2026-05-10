@@ -4,38 +4,13 @@
  */
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import Activity from './Activity';
 import Body from './Body';
 
 /**
- * 未登录空状态组件
- * @description 显示未登录引导界面，提示用户先登录
- */
-const NotLoggedInState: React.FC = () => {
-  const navigate = useNavigate();
-
-  return (
-    <div className="py-16 flex flex-col items-center px-4">
-      <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
-        <svg className="w-8 h-8 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      </div>
-      <p className="text-[#8E8E93] text-sm mb-4">请先登录</p>
-      <button
-        onClick={() => navigate('/')}
-        className="bg-[#007AFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
-      >
-        登录
-      </button>
-    </div>
-  );
-};
-
-/**
  * 记录页面组件
+ * @description 包含运动和身体两个子模块，未登录时也保持标签栏和 FAB 可见
  */
 const Records: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'activity' | 'body'>('activity');
@@ -76,8 +51,20 @@ const Records: React.FC = () => {
 
       {/* 内容区域 */}
       <div className="max-w-lg mx-auto px-4 py-4">
-        {currentUser ? (activeTab === 'activity' ? <Activity /> : <Body />) : <NotLoggedInState />}
+        {activeTab === 'activity' ? <Activity /> : <Body />}
       </div>
+
+      {/* 未登录时显示 FAB */}
+      {!currentUser && (
+        <button
+          onClick={() => alert('请先登录后再操作')}
+          className="fixed bottom-24 right-5 w-16 h-16 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform z-10"
+        >
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };

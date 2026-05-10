@@ -23,11 +23,10 @@ import Auth from './pages/Auth';
 
 /**
  * 受保护的路由包装器
- * 未授权用户重定向到授权页面
+ * 始终放行，由各页面内部根据 currentUser 状态处理未登录引导
  */
 const ProtectedRoute: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Outlet /> : <Navigate to="/auth" replace />;
+  return <Outlet />;
 };
 
 /**

@@ -311,6 +311,7 @@ const StatsCards: React.FC<{
 
 /**
  * 身体数据组件
+ * @description 体重折线图 + BMI/体脂数据卡片 + 身体记录列表，未登录时显示空状态引导
  */
 const Body: React.FC = () => {
   const { currentUser } = useUser();
@@ -324,11 +325,21 @@ const Body: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
 
-  if (!currentUser) return null;
+  /**
+   * 处理 FAB 按钮点击
+   * @description 未登录时提示登录，已登录时打开新增弹窗
+   */
+  const handleFabClick = () => {
+    if (!currentUser) {
+      alert('请先登录后再操作');
+      return;
+    }
+    openAddModal();
+  };
 
   /** 刷新记录列表 */
   const refreshRecords = () => {
-    setRecords(getBodyRecordsByUser(currentUser.id));
+    setRecords(getBodyRecordsByUser(currentUser!.id));
   };
 
   /** 打开新增弹窗 */
@@ -361,7 +372,7 @@ const Body: React.FC = () => {
           if (!confirmed) return;
         }
       }
-      updateBodyRecord(currentUser.id, editingRecord.id, {
+      updateBodyRecord(currentUser!.id, editingRecord.id, {
         date,
         weight: parseFloat(weight),
         bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
@@ -375,7 +386,7 @@ const Body: React.FC = () => {
       }
       const record: BodyRecord = {
         id: Math.random().toString(36).substring(2, 15),
-        userId: currentUser.id,
+        userId: currentUser!.id,
         date,
         weight: parseFloat(weight),
         bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
@@ -398,9 +409,40 @@ const Body: React.FC = () => {
 
   /** 删除记录 */
   const handleDelete = (recordId: string) => {
-    deleteBodyRecord(currentUser.id, recordId);
+    deleteBodyRecord(currentUser!.id, recordId);
     refreshRecords();
   };
+
+  // 未登录时显示空状态引导
+  if (!currentUser) {
+    return (
+      <div className="relative">
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <p className="text-[#8E8E93] text-sm mb-4">请先登录查看身体数据</p>
+          <button
+            onClick={handleFabClick}
+            className="bg-[#007AFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
+          >
+            登录
+          </button>
+        </div>
+        {/* 浮动添加按钮 */}
+        <button
+          onClick={handleFabClick}
+          className="fixed bottom-24 right-5 w-16 h-16 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform z-10 safe-area-bottom"
+        >
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -462,9 +504,9 @@ const Body: React.FC = () => {
       {/* 浮动添加按钮 - 始终可见 */}
       <button
         onClick={openAddModal}
-        className="fixed bottom-20 right-5 w-14 h-14 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform z-10 safe-area-bottom"
+        className="fixed bottom-24 right-5 w-16 h-16 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform z-10 safe-area-bottom"
       >
-          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </button>

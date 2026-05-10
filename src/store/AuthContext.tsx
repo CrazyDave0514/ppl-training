@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { cacheAccount } from '../utils/authCache';
+import { setCurrentUser } from '../utils/storage';
 
 /**
  * 授权码（生产环境应通过环境变量或后端验证）
@@ -56,10 +57,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * 登出
+   * @description 清除认证状态并重置当前用户
    */
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    setCurrentUser(null);
   };
 
   return (
