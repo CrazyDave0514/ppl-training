@@ -1,10 +1,11 @@
 /**
  * 授权登录页面
- * @description 输入授权码验证后才能访问应用
+ * @description 输入授权码验证后才能访问应用，支持历史账号快速登录
  */
 
 import React, { useState } from 'react';
 import { useAuth } from '../../store/AuthContext';
+import { getCachedAccounts, clearCachedAccounts, type CachedAccount } from '../../utils/authCache';
 
 /**
  * 授权登录页面组件
@@ -14,6 +15,7 @@ const Auth: React.FC = () => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [cachedAccounts, setCachedAccounts] = useState<CachedAccount[]>(() => getCachedAccounts());
 
   /**
    * 处理提交
@@ -31,6 +33,52 @@ const Auth: React.FC = () => {
       }
       setIsLoading(false);
     }, 500);
+  };
+
+  /**
+   * 处理历史账号点击 - 自动填入授权码并触发登录
+   * @param account - 缓存的账号信息
+   */
+  const handleCachedAccountClick = (account: CachedAccount) => {
+    setCode(account.authCode);
+    setError('');
+    setIsLoading(true);
+
+    setTimeout(() => {
+      const success = login(account.authCode);
+      if (!success) {
+        setError('授权码已失效，请重新输入');
+      }
+      setIsLoading(false);
+    }, 500);
+  };
+
+  /**
+   * 处理清除历史记录
+   */
+  const handleClearCache = () => {
+    clearCachedAccounts();
+    setCachedAccounts([]);
+  };
+
+  /**
+   * 格式化最近登录时间
+   * @param isoString - ISO 格式的时间字符串
+   * @returns 格式化后的时间文本
+   */
+  const formatLoginTime = (isoString: string): string => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMinutes < 1) return '刚刚';
+    if (diffMinutes < 60) return `${diffMinutes} 分钟前`;
+    if (diffHours < 24) return `${diffHours} 小时前`;
+    if (diffDays < 7) return `${diffDays} 天前`;
+    return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
   return (
@@ -102,6 +150,48 @@ const Auth: React.FC = () => {
             </button>
           </form>
         </div>
+
+        {/* 历史账号区域 */}
+        {cachedAccounts.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-sm font-medium text-[#8E8E93]">历史账号</span>
+              <button
+                onClick={handleClearCache}
+                className="text-xs text-[#8E8E93] active:text-[#FF3B30] transition-colors"
+              >
+                清除历史记录
+              </button>
+            </div>
+            <div className="space-y-2">
+              {cachedAccounts.map((account) => (
+                <button
+                  key={account.authCode}
+                  onClick={() => handleCachedAccountClick(account)}
+                  disabled={isLoading}
+                  className="w-full bg-white rounded-2xl p-4 flex items-center justify-between shadow-sm active:bg-[#F2F2F7] transition-colors disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#007AFF] rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold text-white">
+                        {account.username.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-[#1C1C1E]">{account.username}</p>
+                      <p className="text-xs text-[#8E8E93]">
+                        最近登录: {formatLoginTime(account.lastLoginTime)}
+                      </p>
+                    </div>
+                  </div>
+                  <svg className="w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 提示信息 */}
         <p className="text-center text-xs text-[#8E8E93] mt-6">

@@ -24,17 +24,30 @@ const Plans: React.FC = () => {
   const [planToDelete, setPlanToDelete] = useState<TrainingPlan | null>(null);
   const [filter, setFilter] = useState<'all' | 'push' | 'pull' | 'legs'>('all');
 
-  // 如果未登录，重定向到首页
+  // 如果未登录，显示未登录引导
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-[#8E8E93] mb-4">请先选择用户</p>
+      <div className="min-h-screen bg-[#F2F2F7]">
+        {/* 头部 */}
+        <header className="bg-white/80 backdrop-blur-lg border-b border-[#E5E5EA] sticky top-0 z-10">
+          <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+            <h1 className="text-xl font-bold text-[#1C1C1E]">我的计划</h1>
+          </div>
+        </header>
+
+        {/* 未登录空状态 */}
+        <div className="py-16 flex flex-col items-center px-4">
+          <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <p className="text-[#8E8E93] text-sm mb-4">请先登录</p>
           <button
             onClick={() => navigate('/')}
-            className="bg-[#007AFF] text-white font-medium py-2.5 px-6 rounded-xl transition-all duration-200"
+            className="bg-[#007AFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
           >
-            返回首页
+            登录
           </button>
         </div>
       </div>

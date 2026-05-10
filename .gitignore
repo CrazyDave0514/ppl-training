@@ -27,3 +27,7 @@ dist.zip
 *.sw?
 mock-fix.html
 mock-inject.html
+clear-users.html
+reset-users.html
+setup-test.html
+restore-test.html

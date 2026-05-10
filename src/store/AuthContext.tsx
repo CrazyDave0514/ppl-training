@@ -1,9 +1,10 @@
 /**
  * 授权验证上下文
- * @description 管理应用访问授权状态
+ * @description 管理应用访问授权状态，支持账号本地缓存
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { cacheAccount } from '../utils/authCache';
 
 /**
  * 授权码（生产环境应通过环境变量或后端验证）
@@ -42,9 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * @returns 是否验证通过
    */
   const login = (code: string): boolean => {
-    if (code.trim().toUpperCase() === VALID_AUTH_CODE) {
+    const trimmedCode = code.trim().toUpperCase();
+    if (trimmedCode === VALID_AUTH_CODE) {
       setIsAuthenticated(true);
       localStorage.setItem(AUTH_STORAGE_KEY, 'true');
+      // 缓存账号信息（使用授权码前8位作为用户名标识）
+      cacheAccount(trimmedCode.substring(0, 8), trimmedCode);
       return true;
     }
     return false;

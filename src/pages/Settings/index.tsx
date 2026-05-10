@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
+import { useAuth } from '../../store/AuthContext';
 import { clearStorage } from '../../utils/storage';
 import { compressImage, calcAge } from '../../utils/imageUtils';
 
@@ -13,6 +15,8 @@ import { compressImage, calcAge } from '../../utils/imageUtils';
  */
 const Settings: React.FC = () => {
   const { currentUser, updateUser } = useUser();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showNameEditor, setShowNameEditor] = useState(false);
@@ -23,7 +27,34 @@ const Settings: React.FC = () => {
   const [bloodType, setBloodType] = useState(currentUser?.bloodType || '');
   const [gender, setGender] = useState(currentUser?.gender || '');
 
-  if (!currentUser) return null;
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#F2F2F7]">
+        {/* 头部 */}
+        <div className="bg-white/80 backdrop-blur-lg sticky top-0 z-10">
+          <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
+            <h1 className="text-2xl font-bold text-[#1C1C1E]">设置</h1>
+          </div>
+        </div>
+
+        {/* 未登录空状态 */}
+        <div className="py-16 flex flex-col items-center px-4">
+          <div className="w-16 h-16 bg-[#E5E5EA] rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <p className="text-[#8E8E93] text-sm mb-4">请先登录</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-[#007AFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
+          >
+            登录
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const age = birthDate ? calcAge(birthDate) : undefined;
 
@@ -204,7 +235,7 @@ const Settings: React.FC = () => {
           <div className="bg-white rounded-2xl divide-y divide-[#E5E5EA]">
             <div className="flex items-center justify-between p-4">
               <span className="text-sm text-[#1C1C1E]">版本</span>
-              <span className="text-sm text-[#8E8E93]">V1.2.0</span>
+              <span className="text-sm text-[#8E8E93]">V1.2.1</span>
             </div>
             <button
               onClick={handleClearData}
@@ -213,6 +244,20 @@ const Settings: React.FC = () => {
               <span className="text-sm text-[#FF3B30]">清除所有数据</span>
               <svg className="w-4 h-4 text-[#FF3B30]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('确定要退出登录吗？')) {
+                  logout();
+                  navigate('/auth');
+                }
+              }}
+              className="w-full flex items-center justify-between p-4 active:bg-[#F2F2F7] transition-colors"
+            >
+              <span className="text-sm text-[#FF3B30]">退出登录</span>
+              <svg className="w-4 h-4 text-[#FF3B30]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
           </div>
