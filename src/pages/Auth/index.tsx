@@ -53,7 +53,7 @@ const Auth: React.FC = () => {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-[#1C1C1E]">PPL 三分化训练</h1>
+          <h1 className="text-2xl font-bold text-[#1C1C1E]">FitPlus</h1>
           <p className="text-[#8E8E93] mt-2">内测版本，需要授权码访问</p>
         </div>
 

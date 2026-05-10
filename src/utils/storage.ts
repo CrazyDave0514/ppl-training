@@ -3,7 +3,7 @@
  * @description 封装 localStorage 读写操作，提供类型安全的存储接口
  */
 
-import type { AppStorage, User, TrainingPlan, TrainingSession } from '../types';
+import type { AppStorage, User, TrainingPlan, TrainingSession, BodyRecord } from '../types';
 
 /** localStorage 存储键名 */
 const STORAGE_KEY = 'ppl-training-app';
@@ -17,6 +17,7 @@ const getDefaultStorage = (): AppStorage => ({
   users: [],
   plans: {},
   sessions: {},
+  bodyRecords: {},
 });
 
 /**
@@ -29,7 +30,16 @@ export const getStorage = (): AppStorage => {
     if (!data) {
       return getDefaultStorage();
     }
-    return JSON.parse(data) as AppStorage;
+    const parsed = JSON.parse(data);
+    // 兼容旧版本数据：确保新增字段存在
+    const defaults = getDefaultStorage();
+    return {
+      currentUser: parsed.currentUser ?? defaults.currentUser,
+      users: parsed.users ?? defaults.users,
+      plans: parsed.plans ?? defaults.plans,
+      sessions: parsed.sessions ?? defaults.sessions,
+      bodyRecords: parsed.bodyRecords ?? defaults.bodyRecords,
+    } as AppStorage;
   } catch (error) {
     console.error('读取存储数据失败:', error);
     return getDefaultStorage();
@@ -236,6 +246,28 @@ export const deleteSession = (userId: string, sessionId: string): void => {
 };
 
 /**
+ * 更新训练记录
+ * @param userId - 用户 ID
+ * @param sessionId - 记录 ID
+ * @param updates - 需要更新的字段
+ */
+export const updateSession = (
+  userId: string,
+  sessionId: string,
+  updates: Partial<Omit<TrainingSession, 'id' | 'userId'>>
+): void => {
+  const storage = getStorage();
+  if (!storage.sessions[userId]) return;
+  const index = storage.sessions[userId].findIndex(s => s.id === sessionId);
+  if (index === -1) return;
+  storage.sessions[userId][index] = {
+    ...storage.sessions[userId][index],
+    ...updates,
+  };
+  setStorage(storage);
+};
+
+/**
  * 获取用户最近一次的训练记录
  * @param userId - 用户 ID
  * @returns 最近的训练记录或 undefined
@@ -254,4 +286,93 @@ export const getTodaySessions = (userId: string): TrainingSession[] => {
   const today = new Date().toISOString().split('T')[0];
   const sessions = getSessionsByUser(userId);
   return sessions.filter(s => s.date === today);
+};
+
+// ==================== 身体记录相关操作 ====================
+
+/**
+ * 获取用户的所有身体记录
+ * @param userId - 用户 ID
+ * @returns 身体记录数组（按日期倒序）
+ */
+export const getBodyRecordsByUser = (userId: string): BodyRecord[] => {
+  const storage = getStorage();
+  return (storage.bodyRecords[userId] || []).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+};
+
+/**
+ * 添加或更新身体记录（同日期自动去重，保留最新值）
+ * @param record - 身体记录对象
+ */
+export const addBodyRecord = (record: BodyRecord): void => {
+  const storage = getStorage();
+  if (!storage.bodyRecords[record.userId]) {
+    storage.bodyRecords[record.userId] = [];
+  }
+  // 同日期去重：若已存在该日期的记录，则更新而非新增
+  const existingIndex = storage.bodyRecords[record.userId].findIndex(
+    r => r.date === record.date
+  );
+  if (existingIndex !== -1) {
+    storage.bodyRecords[record.userId][existingIndex] = {
+      ...storage.bodyRecords[record.userId][existingIndex],
+      weight: record.weight,
+      bodyFat: record.bodyFat,
+    };
+  } else {
+    storage.bodyRecords[record.userId].push(record);
+  }
+  setStorage(storage);
+};
+
+/**
+ * 更新身体记录
+ * @param userId - 用户 ID
+ * @param recordId - 记录 ID
+ * @param updates - 需要更新的字段
+ */
+export const updateBodyRecord = (
+  userId: string,
+  recordId: string,
+  updates: Partial<Pick<BodyRecord, 'date' | 'weight' | 'bodyFat'>>
+): void => {
+  const storage = getStorage();
+  if (!storage.bodyRecords[userId]) return;
+  const index = storage.bodyRecords[userId].findIndex(r => r.id === recordId);
+  if (index === -1) return;
+  storage.bodyRecords[userId][index] = {
+    ...storage.bodyRecords[userId][index],
+    ...updates,
+  };
+  setStorage(storage);
+};
+
+/**
+ * 删除身体记录
+ * @param userId - 用户 ID
+ * @param recordId - 记录 ID
+ */
+export const deleteBodyRecord = (userId: string, recordId: string): void => {
+  const storage = getStorage();
+  if (!storage.bodyRecords[userId]) return;
+  storage.bodyRecords[userId] = storage.bodyRecords[userId].filter(r => r.id !== recordId);
+  setStorage(storage);
+};
+
+// ==================== 用户更新操作 ====================
+
+/**
+ * 更新用户资料
+ * @param userId - 用户 ID
+ * @param updates - 需要更新的字段
+ */
+export const updateUser = (userId: string, updates: Partial<User>): void => {
+  const storage = getStorage();
+  const index = storage.users.findIndex(u => u.id === userId);
+  if (index !== -1) {
+    storage.users[index] = { ...storage.users[index], ...updates };
+    setStorage(storage);
+  }
 };

@@ -17,6 +17,8 @@ import PlanDetail from './pages/PlanDetail';
 import QuickCreate from './pages/QuickCreate';
 import Training from './pages/Training';
 import SessionDetail from './pages/SessionDetail';
+import Records from './pages/Records';
+import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 
 /**
@@ -69,6 +71,9 @@ function App(): React.ReactElement {
                     {/* 首页 */}
                     <Route path="/" element={<Home />} />
 
+                    {/* 记录 */}
+                    <Route path="/records" element={<Records />} />
+
                     {/* 计划管理 */}
                     <Route path="/plans" element={<Plans />} />
                     <Route path="/plan/:planId" element={<PlanDetail />} />
@@ -81,6 +86,9 @@ function App(): React.ReactElement {
 
                     {/* 训练详情 */}
                     <Route path="/session/:sessionId" element={<SessionDetail />} />
+
+                    {/* 设置 */}
+                    <Route path="/settings" element={<Settings />} />
                   </Route>
                 </Route>
 

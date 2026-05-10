@@ -110,7 +110,7 @@ const Home: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-[#1C1C1E] mb-2">PPL 三分化训练</h1>
+          <h1 className="text-2xl font-bold text-[#1C1C1E] mb-2">FitPlus</h1>
           <p className="text-[#8E8E93] mb-8">Push / Pull / Legs 训练追踪</p>
 
           {users.length === 0 ? (
@@ -198,7 +198,7 @@ const Home: React.FC = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-[#1C1C1E]">PPL 训练</h1>
+              <h1 className="text-lg font-bold text-[#1C1C1E]">FitPlus</h1>
               <p className="text-xs text-[#8E8E93]">Push / Pull / Legs</p>
             </div>
           </div>

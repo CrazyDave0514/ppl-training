@@ -25,3 +25,5 @@ dist.zip
 *.njsproj
 *.sln
 *.sw?
+mock-fix.html
+mock-inject.html

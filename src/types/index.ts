@@ -22,8 +22,20 @@ export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 export interface User {
   /** 用户唯一标识（UUID） */
   id: string;
-  /** 用户名 */
+  /** 用户名/昵称 */
   name: string;
+  /** 头像（base64 或 URL） */
+  avatar?: string;
+  /** 身高 cm */
+  height?: number;
+  /** 出生日期 YYYY-MM-DD */
+  birthDate?: string;
+  /** 年龄（从 birthDate 计算） */
+  age?: number;
+  /** 血型 */
+  bloodType?: string;
+  /** 性别 */
+  gender?: string;
   /** 创建时间（ISO 8601） */
   createdAt: string;
 }
@@ -172,6 +184,26 @@ export interface PlanTemplate {
   exercises: TemplateExercise[];
 }
 
+// ==================== 身体记录相关 ====================
+
+/**
+ * 身体记录
+ */
+export interface BodyRecord {
+  /** 记录唯一标识 */
+  id: string;
+  /** 所属用户 ID */
+  userId: string;
+  /** 记录日期（YYYY-MM-DD） */
+  date: string;
+  /** 体重 kg */
+  weight: number;
+  /** 体脂率 %（可选） */
+  bodyFat?: number;
+  /** 创建时间 */
+  createdAt: string;
+}
+
 // ==================== localStorage 存储结构 ====================
 
 /**
@@ -186,6 +218,8 @@ export interface AppStorage {
   plans: Record<string, TrainingPlan[]>;
   /** 训练记录（按用户 ID 分组） */
   sessions: Record<string, TrainingSession[]>;
+  /** 身体记录（按用户 ID 分组） */
+  bodyRecords: Record<string, BodyRecord[]>;
 }
 
 // ==================== 组件 Props 类型 ====================

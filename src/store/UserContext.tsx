@@ -11,6 +11,7 @@ import {
   setCurrentUser as setStorageCurrentUser,
   addUser as addStorageUser,
   deleteUser as deleteStorageUser,
+  updateUser as updateStorageUser,
 } from '../utils/storage';
 
 /**
@@ -27,6 +28,8 @@ interface UserContextType {
   switchUser: (userId: string) => void;
   /** 删除用户 */
   deleteUser: (userId: string) => void;
+  /** 更新用户 */
+  updateUser: (userId: string, data: Partial<User>) => void;
   /** 重新加载用户数据 */
   refreshUsers: () => void;
 }
@@ -100,6 +103,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [loadUsers]);
 
   /**
+   * 更新用户
+   * @param userId - 用户 ID
+   * @param data - 更新的用户数据
+   */
+  const updateUser = useCallback((userId: string, data: Partial<User>) => {
+    updateStorageUser(userId, data);
+    loadUsers();
+  }, [loadUsers]);
+
+  /**
    * 刷新用户数据
    */
   const refreshUsers = useCallback(() => {
@@ -112,6 +125,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     createUser,
     switchUser,
     deleteUser,
+    updateUser,
     refreshUsers,
   };
 
