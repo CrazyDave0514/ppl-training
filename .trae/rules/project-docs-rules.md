@@ -23,7 +23,9 @@ FitPlus 是一款三分化（Push/Pull/Legs）训练记录 App，基于 React + 
     ├── FitPlus - V1.1 测试用例
     ├── FitPlus - V1.1 测试报告
     ├── FitPlus - V1.2.0 测试用例
-    └── FitPlus - V1.2.0 测试报告
+    ├── FitPlus - V1.2.0 测试报告
+    ├── FitPlus - V1.2.1 测试用例
+    └── FitPlus - V1.2.1 测试报告
 ```
 
 ## 阅读规则
@@ -119,6 +121,8 @@ FitPlus 是一款三分化（Push/Pull/Legs）训练记录 App，基于 React + 
 ## 关键文档链接
 - [目录索引](https://rcnf2iyzif3o.feishu.cn/docx/HgNxdKasioWInoxD7mDcBrn7nkc)
 - [V1.2.1 需求文档](https://rcnf2iyzif3o.feishu.cn/docx/YmuQderK8oOZjCxrcMhcRAFZnzb)
+- [V1.2.1 测试用例](https://www.feishu.cn/docx/AQTkduASLoQJBSxt81xcAGMhnEf)
+- [V1.2.1 测试报告](https://www.feishu.cn/docx/M1EAdkQ8ioHg1FxvCrbcLUEyn1E)
 - [V1.2.0 需求文档](https://rcnf2iyzif3o.feishu.cn/docx/UbmAd572uonj9FxjL8ncAOemn15)
 - [V1.2.0 测试用例](https://rcnf2iyzif3o.feishu.cn/docx/Rt3mdlVH2ocpeOxn2YEcdIQJnvh)
 - [UI/UE 设计规范](https://rcnf2iyzif3o.feishu.cn/docx/SUyYd7EppoSETQxBfnncDV77nCe)
