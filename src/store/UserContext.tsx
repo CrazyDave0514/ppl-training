@@ -80,6 +80,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString(),
     };
     addStorageUser(newUser);
+    setStorageCurrentUser(newUser.id);
     loadUsers();
     return newUser;
   }, [loadUsers]);

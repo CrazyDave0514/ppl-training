@@ -1,13 +1,29 @@
 /**
+ * 临时组件 - 清除所有本地数据并跳转首页
+ * @description 仅用于开发调试，验收后删除
+ */
+function ClearAllData() {
+  useEffect(() => {
+    localStorage.removeItem('ppl-training-auth');
+    localStorage.removeItem('ppl-training-app');
+    localStorage.removeItem('ppl-training-auth-cache');
+    window.location.href = '/';
+  }, []);
+  return <div>正在清除数据...</div>;
+}
+
+/**
  * App 组件 - 应用主入口
  * @description 配置 React Router 路由，添加授权验证
  */
 
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
 import { UserProvider } from './store/UserContext';
 import { PlanProvider } from './store/PlanContext';
 import { SessionProvider } from './store/SessionContext';
 import { AuthProvider, useAuth } from './store/AuthContext';
+import { getCachedAccounts } from './utils/authCache';
 import Layout from './components/Layout';
 
 // 页面组件
@@ -23,10 +39,16 @@ import Auth from './pages/Auth';
 
 /**
  * 受保护的路由包装器
- * 始终放行，由各页面内部根据 currentUser 状态处理未登录引导
+ * 未认证且无缓存账号时跳转授权码页，否则放行
+ * 各页面内部根据 currentUser 状态处理未登录引导
  */
 const ProtectedRoute: React.FC = () => {
-  return <Outlet />;
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Outlet />;
+  // 未认证但有缓存账号（退出登录状态），放行让各页面处理
+  if (getCachedAccounts().length > 0) return <Outlet />;
+  // 未认证且无缓存账号（首次使用），跳转授权码页
+  return <Navigate to="/auth" replace />;
 };
 
 /**
@@ -93,6 +115,9 @@ function App(): React.ReactElement {
 
                 {/* 404 重定向到首页 */}
                 <Route path="*" element={<Navigate to="/" replace />} />
+
+                {/* 临时：清除所有数据 */}
+                <Route path="/clear-all" element={<ClearAllData />} />
               </Routes>
             </Router>
           </SessionProvider>

@@ -105,11 +105,11 @@ const Home: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 w-full max-w-sm text-center shadow-sm animate-scale-in">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#007AFF] to-[#5856D6] rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
+          <img
+            src="/icon-80.png"
+            alt="FitPlus"
+            className="w-20 h-20 mx-auto mb-6 shadow-lg"
+          />
           <h1 className="text-2xl font-bold text-[#1C1C1E] mb-2">FitPlus</h1>
           <p className="text-[#8E8E93] mb-8">Push / Pull / Legs 训练追踪</p>
 
@@ -192,11 +192,11 @@ const Home: React.FC = () => {
       <header className="bg-white/80 backdrop-blur-lg border-b border-[#E5E5EA] sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#007AFF] to-[#5856D6] rounded-xl flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
+            <img
+              src="/icon-40.png"
+              alt="FitPlus"
+              className="w-10 h-10 rounded-xl shadow-md"
+            />
             <div>
               <h1 className="text-lg font-bold text-[#1C1C1E]">FitPlus</h1>
               <p className="text-xs text-[#8E8E93]">Push / Pull / Legs</p>
