@@ -300,7 +300,7 @@ export function generateWeeklySchedule(profile: UserProfile): WeeklySchedule {
   
   return {
     days,
-    weeklyGoal: profile.goal,
+    weeklyGoal: profile.goals?.[0] || 'muscle', // 使用第一个选中的目标，默认增肌
   };
 }
 

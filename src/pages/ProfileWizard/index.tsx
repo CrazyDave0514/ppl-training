@@ -266,14 +266,14 @@ const ProfileWizard: React.FC = () => {
       height: 170,
       currentWeight: 65,
       targetWeight: 65,
-      goal: 'muscle',
-      experience: 'beginner',
+      goals: [], // 健身目标：默认无选择（改为数组）
+      experience: undefined, // 训练经验：默认无选择
       trainingDays: 4,
       trainingDuration: 60,
-      preferredBodyParts: [],
-      injuries: ['none'],
-      availableEquipment: ['dumbbell', 'bodyweight'],
-      trainingTime: 'evening',
+      preferredBodyParts: [], // 身体部位偏好：默认无选择
+      injuries: [], // 伤病情况：默认无选择
+      availableEquipment: [], // 可用器械：默认无选择（修改：之前是 ['dumbbell', 'bodyweight']）
+      trainingTime: undefined, // 训练时间：默认无选择
     };
   });
 
@@ -295,9 +295,16 @@ const ProfileWizard: React.FC = () => {
       case 1:
         return !!(formData.gender && formData.age && formData.height && formData.currentWeight);
       case 2:
-        return !!(formData.goal && formData.experience && formData.trainingDays && formData.trainingDuration);
+        // Step 2: 健身目标（多选）、经验、天数、时长
+        return !!(formData.goals?.length && formData.experience && formData.trainingDays && formData.trainingDuration);
       case 3:
-        return !!(formData.injuries?.length && formData.availableEquipment?.length && formData.trainingTime);
+        // Step 3 需要 4 个配置都有值：身体部位、伤病情况、可用器械、训练时间
+        return !!(
+          formData.preferredBodyParts?.length &&
+          formData.injuries?.length &&
+          formData.availableEquipment?.length &&
+          formData.trainingTime
+        );
       default:
         return false;
     }
@@ -329,7 +336,7 @@ const ProfileWizard: React.FC = () => {
     if (!profile) return false;
     // 检查影响训练计划的关键字段
     const keyFields: (keyof UserProfile)[] = [
-      'goal', 'experience', 'trainingDays', 'trainingDuration',
+      'goals', 'experience', 'trainingDays', 'trainingDuration',
       'availableEquipment', 'injuries', 'trainingTime'
     ];
     return keyFields.some(field => {
@@ -525,27 +532,52 @@ const ProfileWizard: React.FC = () => {
   );
 
   // 渲染步骤 2：健身目标（滑动条）
+  /**
+   * 处理健身目标多选
+   * 规则：'maintain'（维持）独占，不可与其他同时选择
+   */
+  const toggleGoal = (value: FitnessGoal) => {
+    const current = formData.goals || [];
+    const exists = current.includes(value);
+    
+    if (value === 'maintain') {
+      // 点击"维持"：如果已选则取消，否则只选"维持"
+      updateField('goals', exists ? [] : ['maintain']);
+    } else {
+      // 点击其他目标：如果已选则取消，否则添加（同时移除"维持"）
+      if (exists) {
+        updateField('goals', current.filter(g => g !== value));
+      } else {
+        updateField('goals', [...current.filter(g => g !== 'maintain'), value]);
+      }
+    }
+  };
+
   const renderStep2 = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-[#1C1C1E] mb-3">健身目标</label>
+        <label className="block text-sm font-medium text-[#1C1C1E] mb-3">健身目标（可多选）</label>
         <div className="grid grid-cols-2 gap-3">
-          {GOAL_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => updateField('goal', option.value)}
-              className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                formData.goal === option.value
-                  ? 'border-[#007AFF] bg-[#007AFF]/5'
-                  : 'border-[#E5E5EA] bg-white'
-              }`}
-            >
-              <span className="text-2xl mb-2 block">{option.icon}</span>
-              <div className="font-semibold text-[#1C1C1E]">{option.label}</div>
-              <div className="text-xs text-[#8E8E93] mt-1">{option.desc}</div>
-            </button>
-          ))}
+          {GOAL_OPTIONS.map((option) => {
+            const isSelected = (formData.goals || []).includes(option.value);
+            return (
+              <button
+                key={option.value}
+                onClick={() => toggleGoal(option.value)}
+                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  isSelected
+                    ? 'border-[#007AFF] bg-[#007AFF]/5'
+                    : 'border-[#E5E5EA] bg-white'
+                }`}
+              >
+                <span className="text-2xl mb-2 block">{option.icon}</span>
+                <div className="font-semibold text-[#1C1C1E]">{option.label}</div>
+                <div className="text-xs text-[#8E8E93] mt-1">{option.desc}</div>
+              </button>
+            );
+          })}
         </div>
+        <p className="text-xs text-[#8E8E93] mt-2">* "维持"不可与其他目标同时选择</p>
       </div>
 
       <div>

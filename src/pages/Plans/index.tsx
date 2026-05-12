@@ -569,7 +569,7 @@ const Plans: React.FC = () => {
               <div className="bg-[#F2F2F7] rounded-xl p-4 mb-6">
                 <p className="text-sm text-[#8E8E93] mb-2">当前画像</p>
                 <div className="space-y-1">
-                  <p className="text-sm text-[#1C1C1E]">目标: {profile.goal === 'muscle' ? '增肌' : profile.goal === 'fat_loss' ? '减脂' : profile.goal === 'shape' ? '塑形' : '维持'}</p>
+                  <p className="text-sm text-[#1C1C1E]">目标: {profile.goals?.map(g => g === 'muscle' ? '增肌' : g === 'fat_loss' ? '减脂' : g === 'shape' ? '塑形' : '维持').join('、') || '未设置'}</p>
                   <p className="text-sm text-[#1C1C1E]">频率: 每周 {profile.trainingDays} 天</p>
                   <p className="text-sm text-[#1C1C1E]">经验: {profile.experience === 'beginner' ? '初级' : profile.experience === 'intermediate' ? '中级' : '高级'}</p>
                 </div>

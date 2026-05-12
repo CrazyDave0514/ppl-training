@@ -82,9 +82,10 @@ function calculateDailyTargets(profile: UserProfile): {
     shape: 0,
     maintain: 0,
   };
-  const targetCalories = tdee + (goalAdjustments[profile.goal] || 0);
+  const primaryGoal = profile.goals?.[0] || 'muscle';
+  const targetCalories = tdee + (goalAdjustments[primaryGoal] || 0);
   
-  const macros = calculateMacroTargets(targetCalories, profile.goal);
+  const macros = calculateMacroTargets(targetCalories, primaryGoal);
   
   return {
     calories: targetCalories,

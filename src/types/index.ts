@@ -329,8 +329,8 @@ export interface UserProfile {
   currentWeight: number;
   /** 目标体重 kg（可选） */
   targetWeight?: number;
-  /** 健身目标 */
-  goal: FitnessGoal;
+  /** 健身目标（支持多选，但'maintain'独占） */
+  goals: FitnessGoal[];
   /** 健身经验 */
   experience: FitnessExperience;
   /** 每周训练天数 */

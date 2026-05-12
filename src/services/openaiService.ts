@@ -100,7 +100,7 @@ function buildTrainingPrompt(request: TrainingPlanOptimizationRequest): string {
 - 年龄: ${profile.age} 岁
 - 身高: ${profile.height} cm
 - 体重: ${profile.currentWeight} kg
-- 健身目标: ${getGoalText(profile.goal)}
+- 健身目标: ${profile.goals?.map(getGoalText).join(', ') || '未设置'}
 - 训练经验: ${getExperienceText(profile.experience)}
 - 每周训练天数: ${profile.trainingDays} 天
 - 可用器械: ${profile.availableEquipment.map(getEquipmentText).join(', ')}
@@ -146,7 +146,7 @@ function buildDietPrompt(request: DietPlanOptimizationRequest): string {
 - 年龄: ${profile.age} 岁
 - 身高: ${profile.height} cm
 - 体重: ${profile.currentWeight} kg
-- 健身目标: ${getGoalText(profile.goal)}
+- 健身目标: ${profile.goals?.map(getGoalText).join(', ') || '未设置'}
 - 活动水平: ${getActivityLevelText(profile.activityLevel)}
 
 ## 当前饮食计划
@@ -322,7 +322,7 @@ export async function getTrainingAdvice(
 用户画像:
 - 性别: ${profile.gender === 'male' ? '男' : '女'}
 - 年龄: ${profile.age} 岁
-- 健身目标: ${getGoalText(profile.goal)}
+- 健身目标: ${profile.goals?.map(getGoalText).join(', ') || '未设置'}
 - 训练经验: ${getExperienceText(profile.experience)}
 
 请提供专业的训练建议，回答要简洁实用。`;

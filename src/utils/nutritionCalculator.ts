@@ -59,10 +59,11 @@ const GOAL_ADJUSTMENTS: Record<string, { min: number; max: number }> = {
  * 计算每日目标卡路里
  */
 export function calculateTargetCalories(
-  profile: Pick<UserProfile, 'gender' | 'age' | 'height' | 'currentWeight' | 'trainingDays' | 'goal'>
+  profile: Pick<UserProfile, 'gender' | 'age' | 'height' | 'currentWeight' | 'trainingDays' | 'goals'>
 ): number {
   const tdee = calculateTDEE(profile);
-  const adjustment = GOAL_ADJUSTMENTS[profile.goal] || { min: 0, max: 0 };
+  const primaryGoal = profile.goals?.[0] || 'muscle';
+  const adjustment = GOAL_ADJUSTMENTS[primaryGoal] || { min: 0, max: 0 };
   // 取调整范围中间值
   const avgAdjustment = Math.round((adjustment.min + adjustment.max) / 2);
   return Math.round(tdee + avgAdjustment);
@@ -82,13 +83,14 @@ const PROTEIN_FACTORS: Record<string, { min: number; max: number }> = {
  * 计算每日营养目标
  */
 export function calculateNutritionTargets(
-  profile: Pick<UserProfile, 'gender' | 'age' | 'height' | 'currentWeight' | 'trainingDays' | 'goal'>
+  profile: Pick<UserProfile, 'gender' | 'age' | 'height' | 'currentWeight' | 'trainingDays' | 'goals'>
 ): DailyNutritionTarget {
   const targetCalories = calculateTargetCalories(profile);
   const weight = profile.currentWeight;
+  const primaryGoal = profile.goals?.[0] || 'muscle';
 
   // 蛋白质
-  const proteinFactor = PROTEIN_FACTORS[profile.goal] || { min: 1.6, max: 2.0 };
+  const proteinFactor = PROTEIN_FACTORS[primaryGoal] || { min: 1.6, max: 2.0 };
   const protein = Math.round(((proteinFactor.min + proteinFactor.max) / 2) * weight);
 
   // 脂肪（占总热量 25%）
