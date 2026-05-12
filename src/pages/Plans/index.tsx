@@ -199,16 +199,18 @@ const Plans: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F2F2F7] pb-24">
-      {/* 核心 Tab 区域 */}
-      <header className="bg-white border-b border-[#E5E5EA] sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-6">
-          {/* 大 Tab 切换 - 核心位置 */}
-          <div className="flex bg-[#F2F2F7] rounded-2xl p-1.5">
+      {/* 头部 */}
+      <header className="bg-white/80 backdrop-blur-lg sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
+          <h1 className="text-2xl font-bold text-[#1C1C1E] mb-3">计划</h1>
+
+          {/* 子模块切换 */}
+          <div className="flex bg-[#E5E5EA] rounded-xl p-1">
             <button
               onClick={() => setActiveTab('action')}
-              className={`flex-1 py-4 rounded-xl text-base font-semibold transition-all duration-200 ${
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                 activeTab === 'action'
-                  ? 'bg-white text-[#007AFF] shadow-sm'
+                  ? 'bg-white text-[#1C1C1E] shadow-sm'
                   : 'text-[#8E8E93]'
               }`}
             >
@@ -216,9 +218,9 @@ const Plans: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('diet')}
-              className={`flex-1 py-4 rounded-xl text-base font-semibold transition-all duration-200 ${
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                 activeTab === 'diet'
-                  ? 'bg-white text-[#34C759] shadow-sm'
+                  ? 'bg-white text-[#1C1C1E] shadow-sm'
                   : 'text-[#8E8E93]'
               }`}
             >
@@ -648,9 +650,9 @@ const Plans: React.FC = () => {
       {activeTab === 'action' && (
         <button
           onClick={() => setShowAddModal(true)}
-          className="fixed bottom-24 right-4 w-14 h-14 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform z-40"
+          className="fixed bottom-24 right-5 w-16 h-16 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform z-40"
         >
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </button>
