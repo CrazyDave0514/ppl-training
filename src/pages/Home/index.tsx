@@ -323,7 +323,7 @@ const Home: React.FC = () => {
                         {label}
                       </span>
                       {dayPlans.length > 0 ? (
-                        <div className="flex flex-col gap-1 w-full">
+                        <div className="flex flex-col gap-1 w-full items-center">
                           {dayPlans.map(plan => (
                             <div
                               key={plan.id}

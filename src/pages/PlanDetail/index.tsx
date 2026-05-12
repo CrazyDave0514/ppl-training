@@ -308,7 +308,7 @@ const PlanDetail: React.FC = () => {
         </div>
 
         {/* 动作列表 */}
-        <div className="space-y-3">
+        <div className="space-y-3 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-[#1C1C1E]">动作列表</h3>
             {isEditing && (
