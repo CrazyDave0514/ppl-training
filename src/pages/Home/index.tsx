@@ -319,8 +319,7 @@ const Home: React.FC = () => {
       {/* 主体内容 */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* 训练周看板 */}
-        {plans.length > 0 && (
-          <section className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+        <section className="animate-slide-up" style={{ animationDelay: '0ms' }}>
             <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">本周训练</h2>
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <div className="grid grid-cols-7 gap-1">
@@ -469,7 +468,6 @@ const Home: React.FC = () => {
               })()}
             </div>
           </section>
-        )}
 
         {/* 快捷操作 */}
         <section className="animate-slide-up" style={{ animationDelay: '50ms' }}>
