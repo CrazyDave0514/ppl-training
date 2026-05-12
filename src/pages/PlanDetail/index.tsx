@@ -33,6 +33,8 @@ const PlanDetail: React.FC = () => {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  // 用于动作名称选择器
+  const [editingExerciseIndex, setEditingExerciseIndex] = useState<number | null>(null);
 
   // URL 参数控制编辑模式
   useEffect(() => {
@@ -128,6 +130,27 @@ const PlanDetail: React.FC = () => {
       libraryId: libraryExercise.id.startsWith('custom-') ? null : libraryExercise.id,
     };
     setExercises([...exercises, newExercise]);
+    setShowExercisePicker(false);
+    setEditingExerciseIndex(null);
+  };
+
+  /**
+   * 处理替换动作（用于编辑模式下点击动作名称）
+   */
+  const handleReplaceExercise = (libraryExercise: { id: string; name: string; category: string }) => {
+    if (editingExerciseIndex !== null) {
+      const updatedExercises = [...exercises];
+      updatedExercises[editingExerciseIndex] = {
+        ...updatedExercises[editingExerciseIndex],
+        name: libraryExercise.name,
+        libraryId: libraryExercise.id.startsWith('custom-') ? null : libraryExercise.id,
+      };
+      setExercises(updatedExercises);
+      setEditingExerciseIndex(null);
+    } else {
+      // 如果没有指定索引，则添加新动作
+      handleAddExercise(libraryExercise);
+    }
     setShowExercisePicker(false);
   };
 
@@ -384,7 +407,19 @@ const PlanDetail: React.FC = () => {
                       {index + 1}
                     </span>
                     <div>
-                      <h4 className="font-semibold text-[#1C1C1E]">{exercise.name}</h4>
+                      {isEditing ? (
+                        <button
+                          onClick={() => {
+                            setEditingExerciseIndex(index);
+                            setShowExercisePicker(true);
+                          }}
+                          className="font-semibold text-[#1C1C1E] text-left hover:text-[#007AFF] transition-colors"
+                        >
+                          {exercise.name}
+                        </button>
+                      ) : (
+                        <h4 className="font-semibold text-[#1C1C1E]">{exercise.name}</h4>
+                      )}
                       <p className="text-sm text-[#8E8E93]">
                         {exercise.defaultSets ?? 3} 组 × {exercise.defaultReps ?? 10} 次
                         {(exercise.defaultWeight ?? 0) > 0 && ` @ ${exercise.defaultWeight}kg`}
@@ -505,8 +540,11 @@ const PlanDetail: React.FC = () => {
       {showExercisePicker && (
         <ExercisePicker
           category={plan.type}
-          onSelect={handleAddExercise}
-          onCancel={() => setShowExercisePicker(false)}
+          onSelect={editingExerciseIndex !== null ? handleReplaceExercise : handleAddExercise}
+          onCancel={() => {
+            setShowExercisePicker(false);
+            setEditingExerciseIndex(null);
+          }}
         />
       )}
 

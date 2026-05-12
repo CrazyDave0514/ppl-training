@@ -17,6 +17,7 @@ import {
   trainingTypeBorderColors,
 } from '../../data/planTemplates';
 import { getExerciseById } from '../../data/exerciseLibrary';
+import ExercisePicker from '../../components/ExercisePicker';
 
 /**
  * 快速创建页面组件
@@ -33,6 +34,9 @@ const QuickCreate: React.FC = () => {
   const [editableExercises, setEditableExercises] = useState<Exercise[]>([]);
   // 选择的训练日
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  // 动作选择器状态
+  const [showExercisePicker, setShowExercisePicker] = useState(false);
+  const [editingExerciseIndex, setEditingExerciseIndex] = useState<number | null>(null);
 
   // 如果未登录，重定向到首页
   if (!currentUser) {
@@ -365,16 +369,15 @@ const QuickCreate: React.FC = () => {
                         <span className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs text-[#8E8E93] font-medium">
                           {index + 1}
                         </span>
-                        <input
-                          type="text"
-                          value={ex.name}
-                          onChange={(e) => {
-                            const updated = [...editableExercises];
-                            updated[index] = { ...updated[index], name: e.target.value };
-                            setEditableExercises(updated);
+                        <button
+                          onClick={() => {
+                            setEditingExerciseIndex(index);
+                            setShowExercisePicker(true);
                           }}
-                          className="bg-transparent text-[#1C1C1E] text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#007AFF] rounded px-1"
-                        />
+                          className="text-[#1C1C1E] text-sm font-medium text-left hover:text-[#007AFF] transition-colors"
+                        >
+                          {ex.name}
+                        </button>
                       </div>
                       <button
                         onClick={() => {
@@ -467,6 +470,28 @@ const QuickCreate: React.FC = () => {
           </section>
         )}
       </main>
+
+      {/* 动作选择器 */}
+      {showExercisePicker && selectedType && editingExerciseIndex !== null && (
+        <ExercisePicker
+          category={selectedType}
+          onSelect={(exercise) => {
+            const updated = [...editableExercises];
+            updated[editingExerciseIndex] = {
+              ...updated[editingExerciseIndex],
+              name: exercise.name,
+              libraryId: exercise.id,
+            };
+            setEditableExercises(updated);
+            setShowExercisePicker(false);
+            setEditingExerciseIndex(null);
+          }}
+          onCancel={() => {
+            setShowExercisePicker(false);
+            setEditingExerciseIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 };

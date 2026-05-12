@@ -265,15 +265,24 @@ const Plans: React.FC = () => {
                             {getTypeIcon(plan.type)}
                           </div>
                           <div>
-                            <h3 className="font-bold text-[#1C1C1E]">{plan.name}</h3>
-                            <p className={`text-sm font-medium ${trainingTypeTextColors[plan.type]}`}>
-                              {trainingTypeLabels[plan.type]}
-                            </p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold text-[#1C1C1E]">{plan.name}</h3>
+                              <span className="text-xs text-[#8E8E93] bg-[#F2F2F7] px-2 py-0.5 rounded">
+                                {plan.source === 'template' ? '模板' : plan.source === 'ai' ? '智能' : '自定义'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <p className={`text-sm font-medium ${trainingTypeTextColors[plan.type]}`}>
+                                {trainingTypeLabels[plan.type]}
+                              </p>
+                              {plan.dayOfWeek && plan.dayOfWeek.length > 0 && (
+                                <span className="text-xs text-[#8E8E93]">
+                                  {plan.dayOfWeek.map(d => d === 1 ? '周一' : d === 2 ? '周二' : d === 3 ? '周三' : d === 4 ? '周四' : d === 5 ? '周五' : d === 6 ? '周六' : '周日').join('、')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <span className="text-xs text-[#8E8E93] bg-[#F2F2F7] px-2 py-1 rounded-lg">
-                          {plan.source === 'template' ? '模板' : plan.source === 'ai' ? '智能' : '自定义'}
-                        </span>
                       </div>
 
                       {/* 动作预览 */}

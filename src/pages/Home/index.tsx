@@ -311,6 +311,7 @@ const Home: React.FC = () => {
                 {weekDays.map(({ label, jsDay }) => {
                   const dayPlans = getPlansForDay(jsDay);
                   const isToday = jsDay === todayJsDay;
+                  const hasSessions = todaySessions.length > 0 && isToday;
                   return (
                     <div
                       key={jsDay}
@@ -326,7 +327,8 @@ const Home: React.FC = () => {
                           {dayPlans.map(plan => (
                             <div
                               key={plan.id}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                              onClick={() => navigate(`/training?planId=${plan.id}`)}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold cursor-pointer active:scale-90 transition-transform ${
                                 plan.type === 'push' ? 'bg-blue-100 text-blue-600' :
                                 plan.type === 'pull' ? 'bg-purple-100 text-purple-600' :
                                 'bg-green-100 text-green-600'
@@ -342,6 +344,10 @@ const Home: React.FC = () => {
                           <span className="text-[10px] text-[#C7C7CC]">休</span>
                         </div>
                       )}
+                      {/* 今日训练记录标记 */}
+                      {isToday && hasSessions && (
+                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#34C759]"></div>
+                      )}
                     </div>
                   );
                 })}
@@ -350,92 +356,71 @@ const Home: React.FC = () => {
               {/* 今日训练详情 */}
               {(() => {
                 const todayPlans = getPlansForDay(todayJsDay);
-                if (todayPlans.length === 0) return null;
+                if (todayPlans.length === 0 && todaySessions.length === 0) return null;
                 return (
                   <div className="mt-4 pt-4 border-t border-[#E5E5EA]">
-                    <p className="text-sm font-medium text-[#1C1C1E] mb-3">今日训练</p>
-                    <div className="space-y-2">
-                      {todayPlans.map(plan => (
-                        <div key={plan.id} className="flex items-center justify-between bg-[#F2F2F7] rounded-xl p-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[plan.type]}`}>
-                              {getTypeIcon(plan.type)}
+                    {todayPlans.length > 0 && (
+                      <>
+                        <p className="text-sm font-medium text-[#1C1C1E] mb-3">今日训练</p>
+                        <div className="space-y-2 mb-4">
+                          {todayPlans.map(plan => (
+                            <div key={plan.id} className="flex items-center justify-between bg-[#F2F2F7] rounded-xl p-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[plan.type]}`}>
+                                  {getTypeIcon(plan.type)}
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-sm text-[#1C1C1E]">{plan.name}</h4>
+                                  <p className="text-xs text-[#8E8E93]">{plan.exercises.length} 个动作</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/training?planId=${plan.id}`); }}
+                                className="bg-[#007AFF] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
+                              >
+                                开始训练
+                              </button>
                             </div>
-                            <div>
-                              <h4 className="font-medium text-sm text-[#1C1C1E]">{plan.name}</h4>
-                              <p className="text-xs text-[#8E8E93]">{plan.exercises.length} 个动作</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigate(`/training?planId=${plan.id}`); }}
-                            className="bg-[#007AFF] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
-                          >
-                            开始训练
-                          </button>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </>
+                    )}
+                    {/* 今日已完成训练记录 */}
+                    {todaySessions.length > 0 && (
+                      <>
+                        <p className="text-sm font-medium text-[#1C1C1E] mb-3">今日已完成</p>
+                        <div className="space-y-2">
+                          {todaySessions.map((session) => (
+                            <div
+                              key={session.id}
+                              onClick={() => navigate(`/session/${session.id}`)}
+                              className="flex items-center justify-between bg-[#34C759]/10 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[session.type]}`}>
+                                  {getTypeIcon(session.type)}
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-sm text-[#1C1C1E]">{session.planName}</h4>
+                                  <p className="text-xs text-[#8E8E93]">
+                                    {session.exercises.length} 个动作 · {session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-xs text-[#34C759] font-medium">
+                                {new Date(session.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
             </div>
           </section>
         )}
-
-        {/* 今日状态 */}
-        <section className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-          <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">今日状态</h2>
-          {todaySessions.length > 0 ? (
-            <div className="space-y-3">
-              {todaySessions.map((session) => (
-                <div
-                  key={session.id}
-                  onClick={() => navigate(`/session/${session.id}`)}
-                  className="bg-white rounded-2xl p-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98]"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${trainingTypeIconColors[session.type]}`}>
-                        {getTypeIcon(session.type)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-[#1C1C1E]">{session.planName}</h3>
-                        <p className="text-sm text-[#8E8E93]">
-                          {session.exercises.length} 个动作 · {session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm text-[#8E8E93]">
-                      {new Date(session.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
-              <div className="w-16 h-16 bg-[#F2F2F7] rounded-full mx-auto mb-4 flex items-center justify-center">
-                <svg className="w-8 h-8 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-[#8E8E93] mb-4">今日还没有训练记录</p>
-              <button
-                onClick={() => {
-                  const todayPlans = getPlansForDay(todayJsDay);
-                  if (todayPlans.length > 0) {
-                    navigate(`/training?planId=${todayPlans[0].id}`);
-                  } else {
-                    navigate('/plans');
-                  }
-                }}
-                className="bg-[#007AFF] text-white font-medium py-2.5 px-6 rounded-xl transition-all duration-200 active:scale-[0.98]"
-              >
-                开始训练
-              </button>
-            </div>
-          )}
-        </section>
 
         {/* 快捷操作 */}
         <section className="animate-slide-up" style={{ animationDelay: '50ms' }}>
@@ -474,7 +459,7 @@ const Home: React.FC = () => {
             <h2 className="text-lg font-bold text-[#1C1C1E]">最近训练</h2>
             {sessions.length > 0 && (
               <button
-                onClick={() => navigate('/history')}
+                onClick={() => navigate('/records')}
                 className="text-sm text-[#007AFF] font-medium"
               >
                 查看全部
@@ -484,7 +469,7 @@ const Home: React.FC = () => {
 
           {sessions.length > 0 ? (
             <div className="space-y-3">
-              {sessions.map((session) => (
+              {sessions.slice(0, 5).map((session) => (
                 <div
                   key={session.id}
                   onClick={() => navigate(`/session/${session.id}`)}

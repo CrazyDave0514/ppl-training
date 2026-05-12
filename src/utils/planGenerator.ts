@@ -315,10 +315,13 @@ export function convertScheduleToPlans(schedule: WeeklySchedule, userId: string)
 
     const jsDay = day.day === 7 ? 0 : day.day;
 
+    // 生成计划名称（不带星期前缀）
+    const typeName = type === 'push' ? '推训练' : type === 'pull' ? '拉训练' : '腿训练';
+    
     return {
       id: generateId(),
       userId,
-      name: day.label,
+      name: typeName,
       type,
       source: 'ai',
       exercises: day.exercises,
