@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
 import type { TrainingSession, TrainingPlan } from '../../types';
-import { getSessionsByUser, getTodaySessions } from '../../utils/storage';
+import { getSessionsByUser } from '../../utils/storage';
 import {
   trainingTypeLabels,
   trainingTypeIconColors,
@@ -22,22 +22,21 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser, users, createUser, switchUser, deleteUser } = useUser();
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
-  const [todaySessions, setTodaySessions] = useState<TrainingSession[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { plans } = usePlan();
   const [newUserName, setNewUserName] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  // 选中的星期（默认今天）
+  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
 
   // 加载训练记录
   useEffect(() => {
     if (currentUser) {
       const userSessions = getSessionsByUser(currentUser.id);
       setSessions(userSessions.slice(0, 5));
-      setTodaySessions(getTodaySessions(currentUser.id));
     } else {
       setSessions([]);
-      setTodaySessions([]);
     }
   }, [currentUser]);
 
@@ -60,6 +59,23 @@ const Home: React.FC = () => {
    */
   const getPlansForDay = (jsDay: number): TrainingPlan[] => {
     return plans.filter(p => p.dayOfWeek?.includes(jsDay));
+  };
+
+  /**
+   * 获取指定日期的训练记录
+   * @param jsDay - JavaScript 的星期几
+   * @returns 该日的训练记录
+   */
+  const getSessionsForDay = (jsDay: number): TrainingSession[] => {
+    // 计算该星期几对应的日期
+    const today = new Date();
+    const currentDay = today.getDay();
+    const diff = jsDay - currentDay;
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + diff);
+    const dateStr = targetDate.toISOString().split('T')[0];
+    
+    return sessions.filter(s => s.date === dateStr);
   };
 
   /**
@@ -311,15 +327,18 @@ const Home: React.FC = () => {
                 {weekDays.map(({ label, jsDay }) => {
                   const dayPlans = getPlansForDay(jsDay);
                   const isToday = jsDay === todayJsDay;
-                  const hasSessions = todaySessions.length > 0 && isToday;
+                  const isSelected = jsDay === selectedDay;
+                  const daySessions = getSessionsForDay(jsDay);
+                  const hasCompleted = daySessions.length > 0;
                   return (
-                    <div
+                    <button
                       key={jsDay}
+                      onClick={() => setSelectedDay(jsDay)}
                       className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all ${
-                        isToday ? 'bg-[#007AFF]/10 ring-1 ring-[#007AFF]/30' : ''
+                        isSelected ? 'bg-[#007AFF]/10 ring-1 ring-[#007AFF]/30' : 'hover:bg-[#F2F2F7]'
                       }`}
                     >
-                      <span className={`text-xs font-medium mb-1.5 ${isToday ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>
+                      <span className={`text-xs font-medium mb-1.5 ${isSelected ? 'text-[#007AFF]' : isToday ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>
                         {label}
                       </span>
                       {dayPlans.length > 0 ? (
@@ -327,8 +346,7 @@ const Home: React.FC = () => {
                           {dayPlans.map(plan => (
                             <div
                               key={plan.id}
-                              onClick={() => navigate(`/training?planId=${plan.id}`)}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold cursor-pointer active:scale-90 transition-transform ${
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
                                 plan.type === 'push' ? 'bg-blue-100 text-blue-600' :
                                 plan.type === 'pull' ? 'bg-purple-100 text-purple-600' :
                                 'bg-green-100 text-green-600'
@@ -344,77 +362,108 @@ const Home: React.FC = () => {
                           <span className="text-[10px] text-[#C7C7CC]">休</span>
                         </div>
                       )}
-                      {/* 今日训练记录标记 */}
-                      {isToday && hasSessions && (
+                      {/* 训练完成标记 */}
+                      {hasCompleted && (
                         <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#34C759]"></div>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
 
-              {/* 今日训练详情 */}
+              {/* 选中日期训练详情 */}
               {(() => {
-                const todayPlans = getPlansForDay(todayJsDay);
-                if (todayPlans.length === 0 && todaySessions.length === 0) return null;
+                const selectedPlans = getPlansForDay(selectedDay);
+                const selectedSessions = getSessionsForDay(selectedDay);
+                const isToday = selectedDay === todayJsDay;
+                const dayLabel = weekDays.find(d => d.jsDay === selectedDay)?.label || '';
+                
+                if (selectedPlans.length === 0 && selectedSessions.length === 0) return null;
+                
                 return (
                   <div className="mt-4 pt-4 border-t border-[#E5E5EA]">
-                    {todayPlans.length > 0 && (
-                      <>
-                        <p className="text-sm font-medium text-[#1C1C1E] mb-3">今日训练</p>
-                        <div className="space-y-2 mb-4">
-                          {todayPlans.map(plan => (
-                            <div key={plan.id} className="flex items-center justify-between bg-[#F2F2F7] rounded-xl p-3">
+                    <p className="text-sm font-medium text-[#1C1C1E] mb-3">
+                      {isToday ? '今日训练' : `${dayLabel}训练`}
+                    </p>
+                    <div className="space-y-2">
+                      {/* 计划列表（按时间正序，未完成的在前） */}
+                      {[...selectedPlans]
+                        .sort((a, b) => {
+                          // 检查是否已完成
+                          const aCompleted = selectedSessions.some(s => s.planId === a.id);
+                          const bCompleted = selectedSessions.some(s => s.planId === b.id);
+                          // 未完成的排前面
+                          if (aCompleted === bCompleted) return 0;
+                          return aCompleted ? 1 : -1;
+                        })
+                        .map(plan => {
+                          const completedSession = selectedSessions.find(s => s.planId === plan.id);
+                          const isCompleted = !!completedSession;
+                          
+                          return (
+                            <div key={plan.id} className={`flex items-center justify-between rounded-xl p-3 ${
+                              isCompleted ? 'bg-[#34C759]/10' : 'bg-[#F2F2F7]'
+                            }`}>
                               <div className="flex items-center gap-3">
                                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[plan.type]}`}>
                                   {getTypeIcon(plan.type)}
                                 </div>
                                 <div>
                                   <h4 className="font-medium text-sm text-[#1C1C1E]">{plan.name}</h4>
-                                  <p className="text-xs text-[#8E8E93]">{plan.exercises.length} 个动作</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); navigate(`/training?planId=${plan.id}`); }}
-                                className="bg-[#007AFF] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
-                              >
-                                开始训练
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                    {/* 今日已完成训练记录 */}
-                    {todaySessions.length > 0 && (
-                      <>
-                        <p className="text-sm font-medium text-[#1C1C1E] mb-3">今日已完成</p>
-                        <div className="space-y-2">
-                          {todaySessions.map((session) => (
-                            <div
-                              key={session.id}
-                              onClick={() => navigate(`/session/${session.id}`)}
-                              className="flex items-center justify-between bg-[#34C759]/10 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[session.type]}`}>
-                                  {getTypeIcon(session.type)}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-sm text-[#1C1C1E]">{session.planName}</h4>
                                   <p className="text-xs text-[#8E8E93]">
-                                    {session.exercises.length} 个动作 · {session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组
+                                    {isCompleted 
+                                      ? `${completedSession!.exercises.length} 个动作 · ${completedSession!.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组`
+                                      : `${plan.exercises.length} 个动作`
+                                    }
                                   </p>
                                 </div>
                               </div>
-                              <span className="text-xs text-[#34C759] font-medium">
-                                {new Date(session.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                              {isCompleted ? (
+                                <button
+                                  onClick={() => navigate(`/session/${completedSession!.id}`)}
+                                  className="bg-[#34C759] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
+                                >
+                                  已完成
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => navigate(`/training?planId=${plan.id}`)}
+                                  className="bg-[#007AFF] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
+                                >
+                                  开始训练
+                                </button>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                          );
+                        })}
+                      
+                      {/* 自由训练记录（不属于任何计划的） */}
+                      {selectedSessions
+                        .filter(s => !selectedPlans.some(p => p.id === s.planId))
+                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                        .map((session) => (
+                          <div
+                            key={session.id}
+                            onClick={() => navigate(`/session/${session.id}`)}
+                            className="flex items-center justify-between bg-[#34C759]/10 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[session.type]}`}>
+                                {getTypeIcon(session.type)}
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-sm text-[#1C1C1E]">{session.planName}</h4>
+                                <p className="text-xs text-[#8E8E93]">
+                                  {session.exercises.length} 个动作 · {session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-xs text-[#34C759] font-medium">
+                              {new Date(session.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 );
               })()}
