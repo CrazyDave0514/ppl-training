@@ -69,7 +69,8 @@ const TRAINING_TIME_OPTIONS: { value: TrainingTime; label: string; desc: string 
 ];
 
 /**
- * 滑动条组件
+ * 滑动条组件 - 移动端优化版
+ * 使用 touch 事件实现丝滑拖动体验
  */
 const Slider: React.FC<{
   value: number;
@@ -79,32 +80,111 @@ const Slider: React.FC<{
   unit: string;
   onChange: (value: number) => void;
 }> = ({ value, min, max, step, unit, onChange }) => {
-  const percentage = ((value - min) / (max - min)) * 100;
-  
+  const trackRef = React.useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [displayValue, setDisplayValue] = React.useState(value);
+
+  // 同步外部 value 变化
+  React.useEffect(() => {
+    if (!isDragging) {
+      setDisplayValue(value);
+    }
+  }, [value, isDragging]);
+
+  const calcValueFromX = React.useCallback((clientX: number) => {
+    const track = trackRef.current;
+    if (!track) return value;
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const rawValue = min + ratio * (max - min);
+    const stepped = Math.round(rawValue / step) * step;
+    const clamped = Math.max(min, Math.min(max, stepped));
+    // 体重保留一位小数
+    return step < 1 ? Number(clamped.toFixed(1)) : clamped;
+  }, [min, max, step, value]);
+
+  const handleTouchStart = React.useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    const touch = e.touches[0];
+    const newValue = calcValueFromX(touch.clientX);
+    setDisplayValue(newValue);
+    onChange(newValue);
+  }, [calcValueFromX, onChange]);
+
+  const handleTouchMove = React.useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const touch = e.touches[0];
+    const newValue = calcValueFromX(touch.clientX);
+    setDisplayValue(newValue);
+    onChange(newValue);
+  }, [calcValueFromX, onChange]);
+
+  const handleTouchEnd = React.useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const newValue = calcValueFromX(e.clientX);
+    setDisplayValue(newValue);
+    onChange(newValue);
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      const newValue = calcValueFromX(ev.clientX);
+      setDisplayValue(newValue);
+      onChange(newValue);
+    };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [calcValueFromX, onChange]);
+
+  const percentage = ((displayValue - min) / (max - min)) * 100;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm text-[#8E8E93]">{min}{unit}</span>
-        <span className="text-2xl font-bold text-[#007AFF]">{value}<span className="text-sm font-normal">{unit}</span></span>
+        <span className="text-2xl font-bold text-[#007AFF]">{displayValue}<span className="text-sm font-normal">{unit}</span></span>
         <span className="text-sm text-[#8E8E93]">{max}{unit}</span>
       </div>
-      <div className="relative h-2 bg-[#E5E5EA] rounded-full">
-        <div 
-          className="absolute h-2 bg-[#007AFF] rounded-full transition-all"
+      <div
+        ref={trackRef}
+        className="relative h-2 bg-[#E5E5EA] rounded-full select-none"
+        style={{ touchAction: 'none' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+      >
+        {/* 进度条 */}
+        <div
+          className="absolute h-2 bg-[#007AFF] rounded-full pointer-events-none"
           style={{ width: `${percentage}%` }}
         />
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        {/* 滑块 - 扩大触控热区 */}
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none ${
+            isDragging ? 'w-8 h-8 -mt-1 shadow-lg scale-110' : 'w-7 h-7 -mt-0.5 shadow-md'
+          } bg-white border-[3px] border-[#007AFF] rounded-full`}
+          style={{
+            left: `${percentage}%`,
+            transition: isDragging ? 'none' : 'transform 0.15s ease, box-shadow 0.15s ease',
+          }}
         />
-        <div 
-          className="absolute w-6 h-6 bg-white border-2 border-[#007AFF] rounded-full shadow -mt-2 transition-all"
-          style={{ left: `calc(${percentage}% - 12px)` }}
+        {/* 隐形扩大触控区域 */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-12 h-12 -mt-5"
+          style={{ left: `${percentage}%`, touchAction: 'none' }}
         />
       </div>
     </div>
