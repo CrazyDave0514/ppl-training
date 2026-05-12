@@ -368,7 +368,10 @@ const ProfileWizard: React.FC = () => {
    * 生成动画完成后的回调 - 保存画像并生成训练计划
    */
   const handleGenerateComplete = () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.error('[ProfileWizard] currentUser is null');
+      return;
+    }
 
     // 保存画像
     const profileData = {
@@ -377,20 +380,35 @@ const ProfileWizard: React.FC = () => {
       completedAt: new Date().toISOString(),
     } as UserProfile;
     saveProfile(profileData);
+    console.log('[ProfileWizard] Profile saved:', profileData);
 
     // 生成周计划
-    const schedule = generateWeeklySchedule(profileData);
-    // 转换为 TrainingPlan 数组并逐个保存
-    const plans = convertScheduleToPlans(schedule, currentUser.id);
-    plans.forEach(plan => {
-      createPlan({
-        userId: plan.userId,
-        name: plan.name,
-        type: plan.type,
-        source: plan.source,
-        exercises: plan.exercises,
+    try {
+      const schedule = generateWeeklySchedule(profileData);
+      console.log('[ProfileWizard] Schedule generated:', schedule);
+      console.log('[ProfileWizard] Days count:', schedule.days.length);
+      console.log('[ProfileWizard] Exercises per day:', schedule.days.map(d => d.exercises.length));
+
+      // 转换为 TrainingPlan 数组并逐个保存
+      const plans = convertScheduleToPlans(schedule, currentUser.id);
+      console.log('[ProfileWizard] Plans to create:', plans.length);
+      console.log('[ProfileWizard] First plan exercises:', plans[0]?.exercises);
+
+      plans.forEach((plan, i) => {
+        console.log(`[ProfileWizard] Creating plan ${i + 1}:`, plan.name, 'exercises:', plan.exercises.length);
+        createPlan({
+          userId: plan.userId,
+          name: plan.name,
+          type: plan.type,
+          source: plan.source,
+          exercises: plan.exercises,
+        });
       });
-    });
+
+      console.log('[ProfileWizard] All plans created, navigating to /plans');
+    } catch (error) {
+      console.error('[ProfileWizard] Error generating schedule:', error);
+    }
 
     // 跳转到计划页
     navigate('/plans');
