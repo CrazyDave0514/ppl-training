@@ -3,7 +3,7 @@
  * @description 封装 localStorage 读写操作，提供类型安全的存储接口
  */
 
-import type { AppStorage, User, TrainingPlan, TrainingSession, BodyRecord } from '../types';
+import type { AppStorage, User, TrainingPlan, TrainingSession, BodyRecord, UserProfile, DietRecord } from '../types';
 
 /** localStorage 存储键名 */
 const STORAGE_KEY = 'ppl-training-app';
@@ -18,6 +18,8 @@ const getDefaultStorage = (): AppStorage => ({
   plans: {},
   sessions: {},
   bodyRecords: {},
+  userProfiles: {},
+  dietRecords: {},
 });
 
 /**
@@ -39,6 +41,8 @@ export const getStorage = (): AppStorage => {
       plans: parsed.plans ?? defaults.plans,
       sessions: parsed.sessions ?? defaults.sessions,
       bodyRecords: parsed.bodyRecords ?? defaults.bodyRecords,
+      userProfiles: parsed.userProfiles ?? defaults.userProfiles,
+      dietRecords: parsed.dietRecords ?? defaults.dietRecords,
     } as AppStorage;
   } catch (error) {
     console.error('读取存储数据失败:', error);
@@ -375,4 +379,135 @@ export const updateUser = (userId: string, updates: Partial<User>): void => {
     storage.users[index] = { ...storage.users[index], ...updates };
     setStorage(storage);
   }
+};
+
+// ==================== 用户画像相关操作（V1.2.2）====================
+
+/**
+ * 获取用户画像
+ * @param userId - 用户 ID
+ * @returns 用户画像或 undefined
+ */
+export const getUserProfile = (userId: string): UserProfile | undefined => {
+  const storage = getStorage();
+  return storage.userProfiles[userId];
+};
+
+/**
+ * 保存用户画像
+ * @param userId - 用户 ID
+ * @param profile - 用户画像对象
+ */
+export const setUserProfile = (userId: string, profile: UserProfile): void => {
+  const storage = getStorage();
+  storage.userProfiles[userId] = profile;
+  setStorage(storage);
+};
+
+/**
+ * 删除用户画像
+ * @param userId - 用户 ID
+ */
+export const deleteUserProfile = (userId: string): void => {
+  const storage = getStorage();
+  delete storage.userProfiles[userId];
+  setStorage(storage);
+};
+
+/**
+ * 检查用户是否已完成画像
+ * @param userId - 用户 ID
+ * @returns 是否已完成
+ */
+export const hasUserProfile = (userId: string): boolean => {
+  const storage = getStorage();
+  return !!storage.userProfiles[userId];
+};
+
+// ==================== 饮食记录相关操作（V1.2.2）====================
+
+/**
+ * 获取用户的所有饮食记录
+ * @param userId - 用户 ID
+ * @returns 饮食记录数组（按日期倒序）
+ */
+export const getDietRecordsByUser = (userId: string): DietRecord[] => {
+  const storage = getStorage();
+  return (storage.dietRecords[userId] || []).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+};
+
+/**
+ * 获取用户指定日期的饮食记录
+ * @param userId - 用户 ID
+ * @param date - 日期 YYYY-MM-DD
+ * @returns 饮食记录或 undefined
+ */
+export const getDietRecordByDate = (userId: string, date: string): DietRecord | undefined => {
+  const storage = getStorage();
+  const records = storage.dietRecords[userId] || [];
+  return records.find(r => r.date === date);
+};
+
+/**
+ * 添加或更新饮食记录（同日期自动去重）
+ * @param record - 饮食记录对象
+ */
+export const addDietRecord = (record: DietRecord): void => {
+  const storage = getStorage();
+  if (!storage.dietRecords[record.userId]) {
+    storage.dietRecords[record.userId] = [];
+  }
+  // 同日期去重
+  const existingIndex = storage.dietRecords[record.userId].findIndex(
+    r => r.date === record.date
+  );
+  if (existingIndex !== -1) {
+    storage.dietRecords[record.userId][existingIndex] = record;
+  } else {
+    storage.dietRecords[record.userId].push(record);
+  }
+  setStorage(storage);
+};
+
+/**
+ * 更新饮食记录
+ * @param userId - 用户 ID
+ * @param recordId - 记录 ID（即日期）
+ * @param updates - 需要更新的字段
+ */
+export const updateDietRecord = (
+  userId: string,
+  recordId: string,
+  updates: Partial<Omit<DietRecord, 'userId' | 'date'>>
+): void => {
+  const storage = getStorage();
+  if (!storage.dietRecords[userId]) return;
+  const index = storage.dietRecords[userId].findIndex(r => r.date === recordId);
+  if (index === -1) return;
+  storage.dietRecords[userId][index] = {
+    ...storage.dietRecords[userId][index],
+    ...updates,
+  };
+  setStorage(storage);
+};
+
+/**
+ * 删除饮食记录
+ * @param userId - 用户 ID
+ * @param date - 日期 YYYY-MM-DD
+ */
+export const deleteDietRecord = (userId: string, date: string): void => {
+  const storage = getStorage();
+  if (!storage.dietRecords[userId]) return;
+  storage.dietRecords[userId] = storage.dietRecords[userId].filter(r => r.date !== date);
+  setStorage(storage);
+};
+
+/**
+ * 生成唯一 ID
+ */
+export const generateId = (): string => {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };

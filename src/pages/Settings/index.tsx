@@ -1,46 +1,31 @@
 /**
- * 设置页面
- * @description 个人资料编辑、身体信息配置、系统设置
+ * 设置页面 - V1.2.2 重构版
+ * @description 合并身体信息+健身档案为二级页面，移除 AI 设置
  */
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { useAuth } from '../../store/AuthContext';
+import { useProfile } from '../../store/ProfileContext';
 import { clearStorage } from '../../utils/storage';
-import { compressImage, calcAge } from '../../utils/imageUtils';
+import { compressImage } from '../../utils/imageUtils';
 
 /**
  * 设置页面组件
- * @description 个人资料编辑、身体信息配置、系统设置，未登录时保持所有按钮入口
  */
 const Settings: React.FC = () => {
   const { currentUser, updateUser, refreshUsers } = useUser();
   const { logout } = useAuth();
+  const { hasProfile } = useProfile();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [name, setName] = useState(currentUser?.name || '');
 
-  const [height, setHeight] = useState(currentUser?.height || 170);
-  const [birthDate, setBirthDate] = useState(currentUser?.birthDate || '');
-  const [bloodType, setBloodType] = useState(currentUser?.bloodType || '');
-  const [gender, setGender] = useState(currentUser?.gender || '');
-
-  /**
-   * 未登录时的通用拦截处理
-   * @description 提示用户先登录
-   */
-  const requireLogin = () => {
-    alert('请先登录');
-  };
-
-  const age = birthDate ? calcAge(birthDate) : undefined;
-
   /**
    * 保存昵称
-   * @description 已登录时更新用户昵称，未登录时拦截
    */
   const handleSaveName = () => {
     if (!currentUser) return;
@@ -51,32 +36,7 @@ const Settings: React.FC = () => {
   };
 
   /**
-   * 修改身高
-   * @description 已登录时更新身高数据，未登录时拦截
-   * @param delta - 身高变化量
-   */
-  const handleHeightChange = (delta: number) => {
-    if (!currentUser) return;
-    const newHeight = Math.min(250, Math.max(100, height + delta));
-    setHeight(newHeight);
-    updateUser(currentUser.id, { height: newHeight });
-  };
-
-  /**
-   * 修改出生日期
-   * @description 已登录时更新出生日期和年龄，未登录时拦截
-   * @param date - 新的出生日期
-   */
-  const handleBirthDateChange = (date: string) => {
-    if (!currentUser) return;
-    setBirthDate(date);
-    const calculatedAge = calcAge(date);
-    updateUser(currentUser.id, { birthDate: date, age: calculatedAge });
-  };
-
-  /**
    * 修改头像
-   * @description 已登录时压缩并更新头像，未登录时拦截
    */
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!currentUser) return;
@@ -88,39 +48,17 @@ const Settings: React.FC = () => {
     } catch (err) {
       console.error('头像上传失败:', err);
     }
-    // 重置 input，允许重复选择同一文件
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   /**
    * 清除所有数据
-   * @description 弹出确认后清除本地存储并刷新页面
    */
   const handleClearData = () => {
     if (window.confirm('确定要清除所有数据吗？此操作不可恢复。')) {
       clearStorage();
       window.location.reload();
     }
-  };
-
-  /**
-   * 处理性别变更
-   * @description 已登录时更新性别，未登录时拦截
-   */
-  const handleGenderChange = (value: string) => {
-    if (!currentUser) return;
-    setGender(value);
-    updateUser(currentUser.id, { gender: value || undefined });
-  };
-
-  /**
-   * 处理血型变更
-   * @description 已登录时更新血型，未登录时拦截
-   */
-  const handleBloodTypeChange = (value: string) => {
-    if (!currentUser) return;
-    setBloodType(value);
-    updateUser(currentUser.id, { bloodType: value || undefined });
   };
 
   return (
@@ -197,88 +135,36 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {/* 身体信息 */}
+        {/* 健身档案（合并入口） */}
         <div>
-          <h3 className="text-sm font-medium text-[#8E8E93] mb-2 px-1">身体信息</h3>
-          <div className="bg-white rounded-2xl divide-y divide-[#E5E5EA]">
-            {/* 身高 - 步进选择器 */}
-            <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-[#1C1C1E]">身高</span>
+          <h3 className="text-sm font-medium text-[#8E8E93] mb-2 px-1">个人档案</h3>
+          <div className="bg-white rounded-2xl">
+            <button
+              onClick={() => navigate('/profile-wizard')}
+              className="w-full flex items-center justify-between p-4 active:bg-[#F2F2F7] transition-colors"
+            >
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => currentUser ? handleHeightChange(-1) : requireLogin()}
-                  className="w-8 h-8 rounded-full bg-[#F2F2F7] flex items-center justify-center active:bg-[#E5E5EA] transition-colors"
-                >
-                  <svg className="w-4 h-4 text-[#1C1C1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                <div className="w-10 h-10 bg-[#007AFF]/10 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-[#007AFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                </button>
-                <span className="text-sm text-[#007AFF] w-12 text-center font-medium">{height}</span>
-                <button
-                  onClick={() => currentUser ? handleHeightChange(1) : requireLogin()}
-                  className="w-8 h-8 rounded-full bg-[#F2F2F7] flex items-center justify-center active:bg-[#E5E5EA] transition-colors"
-                >
-                  <svg className="w-4 h-4 text-[#1C1C1E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-                <span className="text-xs text-[#8E8E93]">cm</span>
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-[#1C1C1E]">健身档案</p>
+                  <p className="text-xs text-[#8E8E93]">
+                    {hasProfile ? '已配置，点击编辑' : '未配置，点击设置'}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            {/* 出生日期 */}
-            <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-[#1C1C1E]">出生日期</span>
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => currentUser ? handleBirthDateChange(e.target.value) : requireLogin()}
-                  max={new Date().toISOString().split('T')[0]}
-                  className="text-sm text-[#007AFF] bg-transparent focus:outline-none"
-                />
+                {hasProfile && (
+                  <span className="text-xs bg-[#34C759] text-white px-2 py-0.5 rounded-full">已配置</span>
+                )}
+                <svg className="w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-            </div>
-
-            {/* 年龄（自动计算，只读） */}
-            <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-[#1C1C1E]">年龄</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-[#8E8E93]">
-                  {age !== undefined ? `${age} 岁` : '未设置'}
-                </span>
-              </div>
-            </div>
-
-            {/* 性别 */}
-            <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-[#1C1C1E]">性别</span>
-              <select
-                value={gender}
-                onChange={(e) => handleGenderChange(e.target.value)}
-                className="text-sm text-[#007AFF] bg-transparent focus:outline-none"
-              >
-                <option value="">未设置</option>
-                <option value="male">男</option>
-                <option value="female">女</option>
-              </select>
-            </div>
-
-            {/* 血型 */}
-            <div className="flex items-center justify-between p-4">
-              <span className="text-sm text-[#1C1C1E]">血型</span>
-              <select
-                value={bloodType}
-                onChange={(e) => handleBloodTypeChange(e.target.value)}
-                className="text-sm text-[#007AFF] bg-transparent focus:outline-none"
-              >
-                <option value="">未设置</option>
-                <option value="A">A 型</option>
-                <option value="B">B 型</option>
-                <option value="O">O 型</option>
-                <option value="AB">AB 型</option>
-              </select>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -288,10 +174,10 @@ const Settings: React.FC = () => {
           <div className="bg-white rounded-2xl divide-y divide-[#E5E5EA]">
             <div className="flex items-center justify-between p-4">
               <span className="text-sm text-[#1C1C1E]">版本</span>
-              <span className="text-sm text-[#8E8E93]">V1.2.1</span>
+              <span className="text-sm text-[#8E8E93]">V1.2.2</span>
             </div>
             <button
-              onClick={() => currentUser ? handleClearData() : requireLogin()}
+              onClick={() => currentUser ? handleClearData() : alert('请先登录')}
               className="w-full flex items-center justify-between p-4 active:bg-[#F2F2F7] transition-colors"
             >
               <span className="text-sm text-[#FF3B30]">清除所有数据</span>
@@ -299,7 +185,6 @@ const Settings: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
-            {/* 退出登录按钮仅在已登录时显示 */}
             {currentUser && (
               <button
                 onClick={() => {

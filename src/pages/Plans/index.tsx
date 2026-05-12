@@ -1,47 +1,62 @@
 /**
- * 计划列表页面
- * @description Apple Health 风格显示所有训练计划，支持开始训练、编辑、删除
+ * 计划页面 - V1.2.2 重构版
+ * @description 包含动作计划和饮食计划两个 Tab，支持智能计划生成
  */
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
+import { useProfile } from '../../store/ProfileContext';
+import { useDiet } from '../../store/DietContext';
 import type { TrainingPlan } from '../../types';
 import {
   trainingTypeLabels,
   trainingTypeIconColors,
   trainingTypeTextColors,
 } from '../../data/planTemplates';
+import { generateWeeklySchedule, convertScheduleToPlans } from '../../utils/planGenerator';
+import { foodDatabase } from '../../data/foodDatabase';
+import { addPlan } from '../../utils/storage';
 
 /**
- * 计划列表页面组件
- * @description Apple Health 风格显示所有训练计划，未登录时保持 UI 布局并显示空状态引导
+ * Tab 类型
+ */
+type TabType = 'action' | 'diet';
+
+/**
+ * 计划页面组件
  */
 const Plans: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useUser();
-  const { plans, deletePlan } = usePlan();
+  const { plans, deletePlan, refreshPlans } = usePlan();
+  const { profile, hasProfile } = useProfile();
+  const { 
+    mealPlan, 
+    dailyNutrition, 
+    waterIntake, 
+    addWater,
+    generateDailyMealPlan,
+  } = useDiet();
+  
+  // 当前选中的 Tab
+  const [activeTab, setActiveTab] = useState<TabType>('action');
+  
+  // 删除确认
   const [planToDelete, setPlanToDelete] = useState<TrainingPlan | null>(null);
-  const [filter, setFilter] = useState<'all' | 'push' | 'pull' | 'legs'>('all');
+  
+  // 生成计划弹窗
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   /**
-   * 过滤后的计划列表
+   * 计划列表（V1.2.2 移除过滤，显示全部）
    */
-  const filteredPlans = currentUser && filter === 'all' ? plans : currentUser ? plans.filter((p) => p.type === filter) : [];
-
-  /**
-   * 按类型分组的计划
-   */
-  const plansByType = {
-    push: plans.filter((p) => p.type === 'push'),
-    pull: plans.filter((p) => p.type === 'pull'),
-    legs: plans.filter((p) => p.type === 'legs'),
-  };
+  const displayPlans = currentUser ? plans : [];
 
   /**
    * 处理开始训练
-   * @description 未登录时提示登录，已登录时跳转到训练页面
    */
   const handleStartTraining = (planId: string) => {
     if (!currentUser) {
@@ -53,7 +68,6 @@ const Plans: React.FC = () => {
 
   /**
    * 处理编辑计划
-   * @description 未登录时提示登录，已登录时跳转到编辑页面
    */
   const handleEditPlan = (planId: string) => {
     if (!currentUser) {
@@ -73,16 +87,52 @@ const Plans: React.FC = () => {
     }
   };
 
+
+
   /**
-   * 处理快速创建
-   * @description 未登录时提示登录，已登录时跳转到快速创建页面
+   * 处理生成智能计划
    */
-  const handleQuickCreate = () => {
-    if (!currentUser) {
-      alert('请先登录后再操作');
+  const handleGeneratePlan = async () => {
+    if (!hasProfile || !profile) {
+      navigate('/profile-wizard');
       return;
     }
-    navigate('/quick-create');
+    
+    setGenerating(true);
+    
+    try {
+      // 生成一周训练计划
+      const weeklySchedule = generateWeeklySchedule(profile);
+      
+      // 转换为 TrainingPlan 并保存
+      if (currentUser) {
+        const generatedPlans = convertScheduleToPlans(weeklySchedule, currentUser.id);
+        generatedPlans.forEach(plan => addPlan(currentUser.id, plan));
+        refreshPlans();
+      }
+      
+      alert('智能计划生成成功！已添加到您的计划列表。');
+      setShowGenerateModal(false);
+    } catch (error) {
+      console.error('生成计划失败:', error);
+      alert('生成计划失败，请重试');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  /**
+   * 处理生成饮食计划
+   */
+  const handleGenerateDietPlan = () => {
+    if (!hasProfile || !profile) {
+      navigate('/profile-wizard');
+      return;
+    }
+    
+    // 默认使用休息日配置，实际应该根据当天训练计划判断
+    generateDailyMealPlan(profile, 'rest');
+    alert('今日饮食计划已生成！');
   };
 
   /**
@@ -113,38 +163,66 @@ const Plans: React.FC = () => {
     }
   };
 
-  const filterTabs = [
-    { key: 'all', label: '全部', count: plans.length },
-    { key: 'push', label: 'Push', count: plansByType.push.length },
-    { key: 'pull', label: 'Pull', count: plansByType.pull.length },
-    { key: 'legs', label: 'Legs', count: plansByType.legs.length },
-  ];
+
+
+  /**
+   * 获取食物详情
+   */
+  const getFoodById = (foodId: string) => {
+    return foodDatabase.find(f => f.id === foodId);
+  };
+
+  /**
+   * 计算餐食营养
+   */
+  const calculateMealNutrition = (mealItems: { foodId: string; amount: number }[]) => {
+    let calories = 0;
+    let protein = 0;
+    let carbs = 0;
+    let fat = 0;
+    
+    mealItems.forEach(item => {
+      const food = getFoodById(item.foodId);
+      if (food) {
+        const ratio = item.amount / 100;
+        calories += food.calories * ratio;
+        protein += food.protein * ratio;
+        carbs += food.carbs * ratio;
+        fat += food.fat * ratio;
+      }
+    });
+    
+    return { calories: Math.round(calories), protein, carbs, fat };
+  };
 
   return (
     <div className="min-h-screen bg-[#F2F2F7] pb-24">
-      {/* 头部 */}
-      <header className="bg-white/80 backdrop-blur-lg border-b border-[#E5E5EA] sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* 核心 Tab 区域 */}
+      <header className="bg-white border-b border-[#E5E5EA] sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 py-6">
+          {/* 大 Tab 切换 - 核心位置 */}
+          <div className="flex bg-[#F2F2F7] rounded-2xl p-1.5">
             <button
-              onClick={() => navigate('/')}
-              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-[#F2F2F7] text-[#007AFF] transition-all duration-200"
+              onClick={() => setActiveTab('action')}
+              className={`flex-1 py-4 rounded-xl text-base font-semibold transition-all duration-200 ${
+                activeTab === 'action'
+                  ? 'bg-white text-[#007AFF] shadow-sm'
+                  : 'text-[#8E8E93]'
+              }`}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              动作计划
             </button>
-            <h1 className="text-xl font-bold text-[#1C1C1E]">我的计划</h1>
+            <button
+              onClick={() => setActiveTab('diet')}
+              className={`flex-1 py-4 rounded-xl text-base font-semibold transition-all duration-200 ${
+                activeTab === 'diet'
+                  ? 'bg-white text-[#34C759] shadow-sm'
+                  : 'text-[#8E8E93]'
+              }`}
+            >
+              饮食计划
+            </button>
           </div>
-          <button
-            onClick={handleQuickCreate}
-            className="bg-[#007AFF] text-white font-medium py-2 px-4 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            新建
-          </button>
         </div>
       </header>
 
@@ -158,7 +236,7 @@ const Plans: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <p className="text-[#8E8E93] text-sm mb-4">请先登录查看训练计划</p>
+            <p className="text-[#8E8E93] text-sm mb-4">请先登录查看计划</p>
             <button
               onClick={() => navigate('/')}
               className="bg-[#007AFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
@@ -166,30 +244,13 @@ const Plans: React.FC = () => {
               登录
             </button>
           </div>
-        ) : (
+        ) : activeTab === 'action' ? (
+          /* 动作计划 Tab */
           <>
-            {/* 过滤标签 */}
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-              {filterTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key as typeof filter)}
-                  className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap transition-all duration-200 ${
-                    filter === tab.key
-                      ? 'bg-[#007AFF] text-white'
-                      : 'bg-white text-[#8E8E93] shadow-sm'
-                  }`}
-                >
-                  {tab.label}
-                  <span className="ml-1.5 text-xs opacity-70">({tab.count})</span>
-                </button>
-              ))}
-            </div>
-
-            {/* 计划列表 */}
-            {filteredPlans.length > 0 ? (
+            {/* 计划列表（V1.2.2 移除过滤标签） */}
+            {displayPlans.length > 0 ? (
               <div className="space-y-4">
-                {filteredPlans.map((plan, index) => (
+                {displayPlans.map((plan, index) => (
                   <div
                     key={plan.id}
                     className="bg-white rounded-2xl overflow-hidden shadow-sm animate-slide-up"
@@ -209,7 +270,7 @@ const Plans: React.FC = () => {
                           </div>
                         </div>
                         <span className="text-xs text-[#8E8E93] bg-[#F2F2F7] px-2 py-1 rounded-lg">
-                          {plan.source === 'template' ? '模板' : '自定义'}
+                          {plan.source === 'template' ? '模板' : plan.source === 'ai' ? '智能' : '自定义'}
                         </span>
                       </div>
 
@@ -269,14 +330,185 @@ const Plans: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-bold text-[#1C1C1E] mb-2">还没有计划</h3>
                 <p className="text-[#8E8E93] mb-6">创建您的第一个训练计划开始追踪</p>
-                <button
-                  onClick={() => navigate('/quick-create')}
-                  className="bg-[#007AFF] text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 active:scale-[0.98]"
-                >
-                  快速创建
-                </button>
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => navigate('/quick-create')}
+                    className="bg-[#007AFF] text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 active:scale-[0.98]"
+                  >
+                    快速创建
+                  </button>
+                  <button
+                    onClick={() => hasProfile ? setShowGenerateModal(true) : navigate('/profile-wizard')}
+                    className="bg-[#34C759] text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 active:scale-[0.98]"
+                  >
+                    智能生成
+                  </button>
+                </div>
               </div>
             )}
+          </>
+        ) : (
+          /* 饮食计划 Tab */
+          <>
+            {/* 营养概览卡片 */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
+              <h3 className="font-bold text-[#1C1C1E] mb-4">今日营养概览</h3>
+              
+              {/* 卡路里环形进度 */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-20 h-20">
+                    <svg className="w-20 h-20 transform -rotate-90">
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="36"
+                        fill="none"
+                        stroke="#E5E5EA"
+                        strokeWidth="8"
+                      />
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="36"
+                        fill="none"
+                        stroke="#34C759"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${(dailyNutrition.calories.actual / dailyNutrition.calories.target) * 226} 226`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-lg font-bold text-[#1C1C1E]">{dailyNutrition.calories.actual}</span>
+                      <span className="text-xs text-[#8E8E93]">kcal</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#8E8E93]">目标: {dailyNutrition.calories.target} kcal</p>
+                    <p className="text-sm text-[#34C759]">剩余: {dailyNutrition.calories.remaining} kcal</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 三大营养素 */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">蛋白质</p>
+                  <p className="text-lg font-bold text-[#1C1C1E]">{dailyNutrition.protein.actual}g</p>
+                  <p className="text-xs text-[#8E8E93]">/ {dailyNutrition.protein.target}g</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#007AFF] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.protein.actual / dailyNutrition.protein.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">碳水</p>
+                  <p className="text-lg font-bold text-[#1C1C1E]">{dailyNutrition.carbs.actual}g</p>
+                  <p className="text-xs text-[#8E8E93]">/ {dailyNutrition.carbs.target}g</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#FF9500] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.carbs.actual / dailyNutrition.carbs.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">脂肪</p>
+                  <p className="text-lg font-bold text-[#1C1C1E]">{dailyNutrition.fat.actual}g</p>
+                  <p className="text-xs text-[#8E8E93]">/ {dailyNutrition.fat.target}g</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#FF3B30] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.fat.actual / dailyNutrition.fat.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* 水分摄入 */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-[#1C1C1E]">水分摄入</h3>
+                <span className="text-[#007AFF] font-medium">{waterIntake} ml</span>
+              </div>
+              <div className="flex gap-2">
+                {[250, 500, 750].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => addWater(amount)}
+                    className="flex-1 bg-[#E5F0FF] text-[#007AFF] py-2 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]"
+                  >
+                    +{amount}ml
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* 餐食列表 */}
+            {mealPlan && (
+              <div className="space-y-4">
+                {[
+                  { key: 'breakfast', label: '早餐', icon: '🌅' },
+                  { key: 'lunch', label: '午餐', icon: '☀️' },
+                  { key: 'dinner', label: '晚餐', icon: '🌙' },
+                  { key: 'snack', label: '加餐', icon: '🍎' },
+                ].map(({ key, label, icon }) => {
+                  const items = mealPlan[key as keyof typeof mealPlan];
+                  const nutrition = calculateMealNutrition(items);
+                  
+                  return (
+                    <div key={key} className="bg-white rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{icon}</span>
+                          <h4 className="font-bold text-[#1C1C1E]">{label}</h4>
+                        </div>
+                        <span className="text-sm text-[#8E8E93]">{nutrition.calories} kcal</span>
+                      </div>
+                      
+                      {items.length > 0 ? (
+                        <div className="space-y-2">
+                          {items.map((item, index) => {
+                            const food = getFoodById(item.foodId);
+                            if (!food) return null;
+                            
+                            return (
+                              <div key={index} className="flex items-center justify-between py-2 border-b border-[#F2F2F7] last:border-0">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-[#F2F2F7] rounded-lg flex items-center justify-center text-lg">
+                                    {food.icon}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-[#1C1C1E]">{food.name}</p>
+                                    <p className="text-xs text-[#8E8E93]">{item.amount}g · {Math.round(food.calories * item.amount / 100)} kcal</p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[#8E8E93] text-center py-4">暂无食物</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* 生成饮食计划按钮 */}
+            <button
+              onClick={handleGenerateDietPlan}
+              className="w-full mt-6 bg-[#34C759] text-white text-base font-semibold py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              生成今日饮食计划
+            </button>
           </>
         )}
       </main>
@@ -310,6 +542,53 @@ const Plans: React.FC = () => {
                 className="flex-1 bg-[#FF3B30] text-white font-medium py-3 rounded-xl transition-all duration-200"
               >
                 删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 生成计划弹窗 */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowGenerateModal(false)}>
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 bg-green-50 rounded-full mx-auto mb-4 flex items-center justify-center">
+              <svg className="w-7 h-7 text-[#34C759]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-2">生成智能计划</h2>
+            <p className="text-[#8E8E93] text-center mb-6">
+              根据您的用户画像，系统将为您生成一周个性化训练计划
+            </p>
+            
+            {profile && (
+              <div className="bg-[#F2F2F7] rounded-xl p-4 mb-6">
+                <p className="text-sm text-[#8E8E93] mb-2">当前画像</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-[#1C1C1E]">目标: {profile.goal === 'muscle' ? '增肌' : profile.goal === 'fat_loss' ? '减脂' : profile.goal === 'shape' ? '塑形' : '维持'}</p>
+                  <p className="text-sm text-[#1C1C1E]">频率: 每周 {profile.trainingDays} 天</p>
+                  <p className="text-sm text-[#1C1C1E]">经验: {profile.experience === 'beginner' ? '初级' : profile.experience === 'intermediate' ? '中级' : '高级'}</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowGenerateModal(false)}
+                className="flex-1 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleGeneratePlan}
+                disabled={generating}
+                className="flex-1 bg-[#34C759] text-white font-medium py-3 rounded-xl transition-all duration-200 disabled:opacity-50"
+              >
+                {generating ? '生成中...' : '确认生成'}
               </button>
             </div>
           </div>

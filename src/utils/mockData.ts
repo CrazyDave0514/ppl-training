@@ -88,12 +88,12 @@ const createMockSession = (
     exercises: exercises.map(ex => ({
       id: generateId(),
       name: ex.name,
-      sets: Array.from({ length: ex.defaultSets }, () => ({
-        reps: ex.defaultReps + Math.floor(Math.random() * 3) - 1,
-        weight: Math.max(0, ex.defaultWeight + Math.floor(Math.random() * 5) - 2),
+      sets: Array.from({ length: ex.defaultSets ?? 3 }, () => ({
+        reps: (ex.defaultReps ?? 10) + Math.floor(Math.random() * 3) - 1,
+        weight: Math.max(0, (ex.defaultWeight ?? 0) + Math.floor(Math.random() * 5) - 2),
       })),
       isFromPlan: true,
-      libraryId: ex.libraryId,
+      libraryId: ex.libraryId ?? null,
     })),
     createdAt: new Date(date).toISOString(),
   };
@@ -178,6 +178,8 @@ export const generateMockData = (): AppStorage => {
     plans: { [userId]: plans },
     sessions: { [userId]: sessions },
     bodyRecords: { [userId]: bodyRecords },
+    userProfiles: {},
+    dietRecords: {},
   };
 };
 

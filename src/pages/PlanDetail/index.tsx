@@ -371,8 +371,8 @@ const PlanDetail: React.FC = () => {
                     <div>
                       <h4 className="font-semibold text-[#1C1C1E]">{exercise.name}</h4>
                       <p className="text-sm text-[#8E8E93]">
-                        {exercise.defaultSets} 组 × {exercise.defaultReps} 次
-                        {exercise.defaultWeight > 0 && ` @ ${exercise.defaultWeight}kg`}
+                        {exercise.defaultSets ?? 3} 组 × {exercise.defaultReps ?? 10} 次
+                        {(exercise.defaultWeight ?? 0) > 0 && ` @ ${exercise.defaultWeight}kg`}
                       </p>
                     </div>
                   </div>

@@ -64,12 +64,12 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const exercises: SessionExercise[] = plan.exercises.map(planEx => ({
       id: planEx.id,
       name: planEx.name,
-      sets: Array(planEx.defaultSets).fill(null).map(() => ({
-        reps: planEx.defaultReps,
-        weight: planEx.defaultWeight,
+      sets: Array(planEx.defaultSets ?? 3).fill(null).map(() => ({
+        reps: planEx.defaultReps ?? 10,
+        weight: planEx.defaultWeight ?? 0,
       })),
       isFromPlan: true,
-      libraryId: planEx.libraryId,
+      libraryId: planEx.libraryId ?? null,
     }));
 
     const session: TrainingSession = {
