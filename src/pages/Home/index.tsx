@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
-import type { TrainingSession } from '../../types';
+import { usePlan } from '../../store/PlanContext';
+import type { TrainingSession, TrainingPlan } from '../../types';
 import { getSessionsByUser, getTodaySessions } from '../../utils/storage';
 import {
   trainingTypeLabels,
@@ -24,6 +25,7 @@ const Home: React.FC = () => {
   const [todaySessions, setTodaySessions] = useState<TrainingSession[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { plans } = usePlan();
   const [newUserName, setNewUserName] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
@@ -38,6 +40,27 @@ const Home: React.FC = () => {
       setTodaySessions([]);
     }
   }, [currentUser]);
+
+  // 周看板数据
+  const todayJsDay = new Date().getDay(); // 0=周日, 1=周一...6=周六
+  const weekDays = [
+    { label: '周一', jsDay: 1 },
+    { label: '周二', jsDay: 2 },
+    { label: '周三', jsDay: 3 },
+    { label: '周四', jsDay: 4 },
+    { label: '周五', jsDay: 5 },
+    { label: '周六', jsDay: 6 },
+    { label: '周日', jsDay: 0 },
+  ];
+
+  /**
+   * 获取指定星期几的训练计划
+   * @param jsDay - JavaScript 的星期几（0=周日, 1=周一...6=周六）
+   * @returns 该日的训练计划列表
+   */
+  const getPlansForDay = (jsDay: number): TrainingPlan[] => {
+    return plans.filter(p => p.dayOfWeek?.includes(jsDay));
+  };
 
   /**
    * 处理创建用户
@@ -279,6 +302,86 @@ const Home: React.FC = () => {
 
       {/* 主体内容 */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
+        {/* 训练周看板 */}
+        {plans.length > 0 && (
+          <section className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+            <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">本周训练</h2>
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="grid grid-cols-7 gap-1">
+                {weekDays.map(({ label, jsDay }) => {
+                  const dayPlans = getPlansForDay(jsDay);
+                  const isToday = jsDay === todayJsDay;
+                  return (
+                    <div
+                      key={jsDay}
+                      className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all ${
+                        isToday ? 'bg-[#007AFF]/10 ring-1 ring-[#007AFF]/30' : ''
+                      }`}
+                    >
+                      <span className={`text-xs font-medium mb-1.5 ${isToday ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>
+                        {label}
+                      </span>
+                      {dayPlans.length > 0 ? (
+                        <div className="flex flex-col gap-1 w-full">
+                          {dayPlans.map(plan => (
+                            <div
+                              key={plan.id}
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                                plan.type === 'push' ? 'bg-blue-100 text-blue-600' :
+                                plan.type === 'pull' ? 'bg-purple-100 text-purple-600' :
+                                'bg-green-100 text-green-600'
+                              }`}
+                              title={plan.name}
+                            >
+                              {plan.type === 'push' ? '推' : plan.type === 'pull' ? '拉' : '腿'}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-7 h-7 rounded-lg bg-[#F2F2F7] flex items-center justify-center">
+                          <span className="text-[10px] text-[#C7C7CC]">休</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 今日训练详情 */}
+              {(() => {
+                const todayPlans = getPlansForDay(todayJsDay);
+                if (todayPlans.length === 0) return null;
+                return (
+                  <div className="mt-4 pt-4 border-t border-[#E5E5EA]">
+                    <p className="text-sm font-medium text-[#1C1C1E] mb-3">今日训练</p>
+                    <div className="space-y-2">
+                      {todayPlans.map(plan => (
+                        <div key={plan.id} className="flex items-center justify-between bg-[#F2F2F7] rounded-xl p-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[plan.type]}`}>
+                              {getTypeIcon(plan.type)}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-sm text-[#1C1C1E]">{plan.name}</h4>
+                              <p className="text-xs text-[#8E8E93]">{plan.exercises.length} 个动作</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/training?planId=${plan.id}`); }}
+                            className="bg-[#007AFF] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
+                          >
+                            开始训练
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </section>
+        )}
+
         {/* 今日状态 */}
         <section className="animate-slide-up" style={{ animationDelay: '0ms' }}>
           <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">今日状态</h2>
@@ -318,7 +421,14 @@ const Home: React.FC = () => {
               </div>
               <p className="text-[#8E8E93] mb-4">今日还没有训练记录</p>
               <button
-                onClick={() => navigate('/plans')}
+                onClick={() => {
+                  const todayPlans = getPlansForDay(todayJsDay);
+                  if (todayPlans.length > 0) {
+                    navigate(`/training?planId=${todayPlans[0].id}`);
+                  } else {
+                    navigate('/plans');
+                  }
+                }}
                 className="bg-[#007AFF] text-white font-medium py-2.5 px-6 rounded-xl transition-all duration-200 active:scale-[0.98]"
               >
                 开始训练

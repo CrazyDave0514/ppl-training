@@ -92,6 +92,8 @@ export interface TrainingPlan {
   createdAt: string;
   /** 更新时间 */
   updatedAt: string;
+  /** 训练日，0=周日 1=周一 ... 6=周六，空数组表示未安排 */
+  dayOfWeek: number[];
 }
 
 // ==================== 训练记录相关 ====================

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
 import type { Exercise, TrainingPlan } from '../../types';
@@ -21,6 +21,7 @@ import {
 const PlanDetail: React.FC = () => {
   const navigate = useNavigate();
   const { planId } = useParams<{ planId: string }>();
+  const [searchParams] = useSearchParams();
   const { currentUser } = useUser();
   const { plans, updatePlan, deletePlan } = usePlan();
 
@@ -31,6 +32,14 @@ const PlanDetail: React.FC = () => {
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+
+  // URL 参数控制编辑模式
+  useEffect(() => {
+    if (searchParams.get('mode') === 'edit') {
+      setIsEditing(true);
+    }
+  }, [searchParams]);
 
   // 加载计划数据
   useEffect(() => {
@@ -40,6 +49,7 @@ const PlanDetail: React.FC = () => {
         setPlan(foundPlan);
         setPlanName(foundPlan.name);
         setExercises([...foundPlan.exercises]);
+        setSelectedDays(foundPlan.dayOfWeek || []);
       } else {
         navigate('/plans');
       }
@@ -88,10 +98,13 @@ const PlanDetail: React.FC = () => {
       ...plan,
       name: planName.trim() || plan.name,
       exercises,
+      dayOfWeek: selectedDays,
       updatedAt: new Date().toISOString(),
     };
     updatePlan(updatedPlan);
     setIsEditing(false);
+    // 清除 URL 中的 mode 参数
+    navigate(`/plan/${plan.id}`, { replace: true });
   };
 
   /**
@@ -200,6 +213,8 @@ const PlanDetail: React.FC = () => {
                     setIsEditing(false);
                     setPlanName(plan.name);
                     setExercises([...plan.exercises]);
+                    setSelectedDays(plan.dayOfWeek || []);
+                    navigate(`/plan/${plan.id}`, { replace: true });
                   }}
                   className="text-[#8E8E93] font-medium py-2 px-4 transition-all duration-200"
                 >
@@ -429,6 +444,47 @@ const PlanDetail: React.FC = () => {
                 >
                   添加动作
                 </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 训练日选择 */}
+        <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm animate-fade-in">
+          <h3 className="text-lg font-bold text-[#1C1C1E] mb-3">训练日</h3>
+          {isEditing ? (
+            <div className="flex flex-wrap gap-2">
+              {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day, i) => {
+                const dayVal = i === 6 ? 0 : i + 1;
+                const isSelected = selectedDays.includes(dayVal);
+                return (
+                  <button
+                    key={day}
+                    onClick={() => {
+                      setSelectedDays(isSelected ? selectedDays.filter(d => d !== dayVal) : [...selectedDays, dayVal]);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      isSelected ? 'bg-[#007AFF] text-white' : 'bg-[#F2F2F7] text-[#8E8E93]'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {selectedDays.length > 0 ? (
+                selectedDays.sort((a, b) => a === 0 ? 7 : a - (b === 0 ? 7 : b)).map(jsDay => {
+                  const label = jsDay === 1 ? '周一' : jsDay === 2 ? '周二' : jsDay === 3 ? '周三' : jsDay === 4 ? '周四' : jsDay === 5 ? '周五' : jsDay === 6 ? '周六' : '周日';
+                  return (
+                    <span key={jsDay} className="bg-[#007AFF]/10 text-[#007AFF] text-sm font-medium px-3 py-1 rounded-lg">
+                      {label}
+                    </span>
+                  );
+                })
+              ) : (
+                <span className="text-sm text-[#8E8E93]">未安排训练日</span>
               )}
             </div>
           )}

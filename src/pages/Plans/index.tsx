@@ -49,6 +49,8 @@ const Plans: React.FC = () => {
   // 生成计划弹窗
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
+  // 新增计划弹窗
+  const [showAddModal, setShowAddModal] = useState(false);
 
   /**
    * 计划列表（V1.2.2 移除过滤，显示全部）
@@ -74,7 +76,7 @@ const Plans: React.FC = () => {
       alert('请先登录后再操作');
       return;
     }
-    navigate(`/plan/${planId}`);
+    navigate(`/plan/${planId}?mode=edit`);
   };
 
   /**
@@ -320,6 +322,16 @@ const Plans: React.FC = () => {
                     </div>
                   </div>
                 ))}
+                {/* 新增计划按钮 */}
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-center gap-2 text-[#007AFF] font-medium active:scale-[0.98] transition-transform"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  添加计划
+                </button>
               </div>
             ) : (
               <div className="bg-white rounded-2xl p-12 text-center shadow-sm animate-fade-in">
@@ -544,6 +556,44 @@ const Plans: React.FC = () => {
                 删除
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 新增计划弹窗 */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowAddModal(false)}>
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-6">添加计划</h2>
+            <div className="space-y-3">
+              <button
+                onClick={() => { setShowAddModal(false); navigate('/quick-create'); }}
+                className="w-full bg-[#007AFF] text-white font-medium py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                快速创建
+              </button>
+              <button
+                onClick={() => { setShowAddModal(false); hasProfile ? setShowGenerateModal(true) : navigate('/profile-wizard'); }}
+                className="w-full bg-[#34C759] text-white font-medium py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                智能生成
+              </button>
+            </div>
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="w-full mt-3 text-[#8E8E93] font-medium py-2.5 rounded-xl transition-all duration-200"
+            >
+              取消
+            </button>
           </div>
         </div>
       )}

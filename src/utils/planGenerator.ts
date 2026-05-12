@@ -313,6 +313,8 @@ export function convertScheduleToPlans(schedule: WeeklySchedule, userId: string)
   return schedule.days.map((day) => {
     const type = day.types[0] || 'push';
 
+    const jsDay = day.day === 7 ? 0 : day.day;
+
     return {
       id: generateId(),
       userId,
@@ -320,6 +322,7 @@ export function convertScheduleToPlans(schedule: WeeklySchedule, userId: string)
       type,
       source: 'ai',
       exercises: day.exercises,
+      dayOfWeek: [jsDay],
       createdAt: now,
       updatedAt: now,
     };

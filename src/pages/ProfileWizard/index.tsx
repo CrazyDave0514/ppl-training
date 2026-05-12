@@ -409,6 +409,7 @@ const ProfileWizard: React.FC = () => {
           type: plan.type,
           source: plan.source,
           exercises: plan.exercises,
+          dayOfWeek: plan.dayOfWeek,
         });
       });
 

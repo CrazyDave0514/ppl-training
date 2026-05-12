@@ -159,9 +159,9 @@ export const generateMockData = (): AppStorage => {
 
   // 生成训练计划
   const plans: TrainingPlan[] = [
-    { id: `mock-plan-push`, userId, name: 'Push 推日计划', type: 'push', source: 'template', exercises: pushExercises, createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: `mock-plan-pull`, userId, name: 'Pull 拉日计划', type: 'pull', source: 'template', exercises: pullExercises, createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: `mock-plan-legs`, userId, name: 'Legs 腿日计划', type: 'legs', source: 'template', exercises: legsExercises, createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: `mock-plan-push`, userId, name: 'Push 推日计划', type: 'push', source: 'template', exercises: pushExercises, dayOfWeek: [1], createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: `mock-plan-pull`, userId, name: 'Pull 拉日计划', type: 'pull', source: 'template', exercises: pullExercises, dayOfWeek: [3], createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: `mock-plan-legs`, userId, name: 'Legs 腿日计划', type: 'legs', source: 'template', exercises: legsExercises, dayOfWeek: [5], createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
   ];
 
   // 生成身体记录：过去 30 天，约每 1-2 天一次，约 20 条

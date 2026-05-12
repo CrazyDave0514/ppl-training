@@ -87,6 +87,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: `plan-${generateId()}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        dayOfWeek: [],
       };
       addStoragePlan(planData.userId, newPlan);
       loadPlans();
@@ -131,6 +132,7 @@ export const PlanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         exercises,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        dayOfWeek: [],
       };
 
       addStoragePlan(currentUser.id, newPlan);

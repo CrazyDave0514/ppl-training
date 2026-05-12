@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
-import type { TrainingType, DifficultyLevel } from '../../types';
+import type { TrainingType, DifficultyLevel, Exercise } from '../../types';
 import {
   getTemplate,
   difficultyLabels,
@@ -24,11 +24,15 @@ import { getExerciseById } from '../../data/exerciseLibrary';
 const QuickCreate: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useUser();
-  const { createPlanFromTemplate } = usePlan();
+  const { createPlan } = usePlan();
   const [selectedType, setSelectedType] = useState<TrainingType | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [planName, setPlanName] = useState('');
+  // 可编辑的动作列表（从模板初始化，用户可修改）
+  const [editableExercises, setEditableExercises] = useState<Exercise[]>([]);
+  // 选择的训练日
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
   // 如果未登录，重定向到首页
   if (!currentUser) {
@@ -57,7 +61,24 @@ const QuickCreate: React.FC = () => {
    */
   const handleSelectType = (type: TrainingType) => {
     setSelectedType(type);
+    setEditableExercises([]);
+    setSelectedDays([]);
     if (selectedLevel) {
+      const template = getTemplate(type, selectedLevel);
+      if (template) {
+        const exercises: Exercise[] = template.exercises.map((ex, i) => {
+          const libraryItem = getExerciseById(ex.libraryId);
+          return {
+            id: `ex-${Date.now()}-${i}`,
+            name: libraryItem?.name || '未知动作',
+            defaultSets: ex.sets,
+            defaultReps: ex.reps,
+            defaultWeight: 0,
+            libraryId: ex.libraryId,
+          };
+        });
+        setEditableExercises(exercises);
+      }
       setShowPreview(true);
     }
   };
@@ -68,6 +89,22 @@ const QuickCreate: React.FC = () => {
   const handleSelectLevel = (level: DifficultyLevel) => {
     setSelectedLevel(level);
     if (selectedType) {
+      // 初始化可编辑动作列表
+      const template = getTemplate(selectedType, level);
+      if (template) {
+        const exercises: Exercise[] = template.exercises.map((ex, i) => {
+          const libraryItem = getExerciseById(ex.libraryId);
+          return {
+            id: `ex-${Date.now()}-${i}`,
+            name: libraryItem?.name || '未知动作',
+            defaultSets: ex.sets,
+            defaultReps: ex.reps,
+            defaultWeight: 0,
+            libraryId: ex.libraryId,
+          };
+        });
+        setEditableExercises(exercises);
+      }
       setShowPreview(true);
     }
   };
@@ -76,10 +113,19 @@ const QuickCreate: React.FC = () => {
    * 处理创建计划
    */
   const handleCreatePlan = () => {
-    if (!selectedTemplate || !currentUser || !selectedType || !selectedLevel) return;
+    if (!currentUser || !selectedType || !selectedLevel) return;
 
-    const name = planName.trim() || selectedTemplate.name;
-    const newPlan = createPlanFromTemplate(name, selectedType, selectedLevel);
+    const name = planName.trim() || (selectedTemplate?.name || '');
+    
+    // 使用可编辑的动作列表创建计划
+    const newPlan = createPlan({
+      userId: currentUser.id,
+      name,
+      type: selectedType,
+      source: 'template' as const,
+      exercises: editableExercises,
+      dayOfWeek: selectedDays,
+    });
 
     if (newPlan) {
       navigate('/plans');
@@ -254,6 +300,8 @@ const QuickCreate: React.FC = () => {
                   setSelectedType(null);
                   setSelectedLevel(null);
                   setPlanName('');
+                  setEditableExercises([]);
+                  setSelectedDays([]);
                 }}
                 className="text-sm text-[#007AFF] font-medium"
               >
@@ -287,26 +335,117 @@ const QuickCreate: React.FC = () => {
                 </div>
               </div>
 
-              {/* 动作列表 */}
+              {/* 动作列表（可编辑） */}
               <div className="space-y-2">
-                <p className="text-sm text-[#8E8E93] mb-2">包含 {selectedTemplate.exercises.length} 个动作：</p>
-                {selectedTemplate.exercises.map((ex, index) => {
-                  const libraryItem = getExerciseById(ex.libraryId);
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-[#F2F2F7] rounded-xl p-3"
-                    >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-[#8E8E93]">包含 {editableExercises.length} 个动作：</p>
+                  <button
+                    onClick={() => {
+                      const newEx: Exercise = {
+                        id: `ex-${Date.now()}`,
+                        name: '新动作',
+                        defaultSets: 3,
+                        defaultReps: 10,
+                        defaultWeight: 0,
+                      };
+                      setEditableExercises([...editableExercises, newEx]);
+                    }}
+                    className="text-xs text-[#007AFF] font-medium flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    添加动作
+                  </button>
+                </div>
+                {editableExercises.map((ex, index) => (
+                  <div key={ex.id} className="bg-[#F2F2F7] rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs text-[#8E8E93] font-medium">
                           {index + 1}
                         </span>
-                        <span className="text-[#1C1C1E]">{libraryItem?.name || '未知动作'}</span>
+                        <input
+                          type="text"
+                          value={ex.name}
+                          onChange={(e) => {
+                            const updated = [...editableExercises];
+                            updated[index] = { ...updated[index], name: e.target.value };
+                            setEditableExercises(updated);
+                          }}
+                          className="bg-transparent text-[#1C1C1E] text-sm font-medium focus:outline-none focus:ring-1 focus:ring-[#007AFF] rounded px-1"
+                        />
                       </div>
-                      <span className="text-sm text-[#8E8E93]">{ex.sets} 组 × {ex.reps} 次</span>
+                      <button
+                        onClick={() => {
+                          setEditableExercises(editableExercises.filter((_, i) => i !== index));
+                        }}
+                        className="text-[#FF3B30] p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-2 pl-9">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={ex.defaultSets ?? 3}
+                          onChange={(e) => {
+                            const updated = [...editableExercises];
+                            updated[index] = { ...updated[index], defaultSets: parseInt(e.target.value) || 3 };
+                            setEditableExercises(updated);
+                          }}
+                          className="w-14 bg-white text-[#1C1C1E] text-sm text-center px-2 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                          min="1"
+                          max="10"
+                        />
+                        <span className="text-xs text-[#8E8E93]">组</span>
+                      </div>
+                      <span className="text-xs text-[#C7C7CC]">×</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={ex.defaultReps ?? 10}
+                          onChange={(e) => {
+                            const updated = [...editableExercises];
+                            updated[index] = { ...updated[index], defaultReps: parseInt(e.target.value) || 10 };
+                            setEditableExercises(updated);
+                          }}
+                          className="w-14 bg-white text-[#1C1C1E] text-sm text-center px-2 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                          min="1"
+                          max="100"
+                        />
+                        <span className="text-xs text-[#8E8E93]">次</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 选择训练日 */}
+              <div className="mt-4 pt-4 border-t border-[#E5E5EA]">
+                <p className="text-sm text-[#8E8E93] mb-2">选择训练日（可多选）</p>
+                <div className="flex flex-wrap gap-2">
+                  {['周一', '周二', '周三', '周四', '周五', '周六', '周日'].map((day, i) => {
+                    const dayVal = i === 6 ? 0 : i + 1; // 1=周一...6=周六, 0=周日
+                    const isSelected = selectedDays.includes(dayVal);
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => {
+                          setSelectedDays(isSelected ? selectedDays.filter(d => d !== dayVal) : [...selectedDays, dayVal]);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          isSelected ? 'bg-[#007AFF] text-white' : 'bg-[#F2F2F7] text-[#8E8E93]'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
