@@ -56,8 +56,12 @@ const Training: React.FC = () => {
     // 如果有当前会话，检查是否是当前计划的会话
     if (currentSession) {
       // 如果当前会话的计划ID与URL中的planId匹配，使用当前会话
-      // 否则需要创建新的会话
       if (planId && currentSession.planId === planId) {
+        setSession(currentSession);
+        return;
+      }
+      // 自由训练（无planId）且当前会话也是自由训练，使用当前会话
+      if (!planId && !currentSession.planId) {
         setSession(currentSession);
         return;
       }
@@ -76,7 +80,8 @@ const Training: React.FC = () => {
       const newSession = startFreeTraining('free', '自由训练');
       setSession(newSession);
     }
-  }, [currentUser, planId, getPlan, startTraining, startFreeTraining, currentSession, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, planId]);
 
   /**
    * 检查未完成的组 - 必须在条件返回之前调用
@@ -318,6 +323,12 @@ const Training: React.FC = () => {
         return (
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 17l-4 4m0 0l-4-4m4 4V3" />
+          </svg>
+        );
+      case 'free':
+        return (
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
           </svg>
         );
       default:
