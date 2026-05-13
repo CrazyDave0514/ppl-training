@@ -11,10 +11,8 @@ import type {
   MealPlan, 
   DailyNutrition, 
   UserProfile, 
-  DailyNutritionRange,
-  DailyDietCheckIn,
+  DailyNutritionRanges,
   WeeklyDietPlan,
-  DailyDietPlan,
   TrainingType,
 } from '../types';
 import { 
@@ -24,7 +22,6 @@ import {
   deleteDietRecord,
   generateId, 
   getCurrentUser,
-  getPlansByUser,
 } from '../utils/storage';
 import { 
   generateMealPlan, 
@@ -59,7 +56,7 @@ interface DietContextType {
   dailyNutrition: DailyNutrition;
   
   // 营养范围
-  nutritionRanges: DailyNutritionRange | null;
+  nutritionRanges: DailyNutritionRanges | null;
   
   // 周维度数据
   weeklyDietPlan: WeeklyDietPlan | null;
@@ -147,7 +144,7 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
   });
   
   // 营养范围
-  const [nutritionRanges, setNutritionRanges] = useState<DailyNutritionRange | null>(null);
+  const [nutritionRanges, setNutritionRanges] = useState<DailyNutritionRanges | null>(null);
   
   // 周饮食计划
   const [weeklyDietPlan, setWeeklyDietPlan] = useState<WeeklyDietPlan | null>(null);
@@ -247,10 +244,13 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
       dayDate.setDate(dayDate.getDate() + day - 1);
       const dateStr = getDateString(dayDate);
       
+      // 将训练类型映射为训练时间（用于餐食分配）
+      const trainingTime = trainingType === 'rest' ? 'rest' : 'evening';
+      
       // 生成当日餐食计划
-      const mealPlan = generateMealPlan(profile, trainingType);
+      const mealPlan = generateMealPlan(profile, trainingTime);
       const nutrition = calculateDailyNutrition(mealPlan, profile);
-      const waterTarget = calculateWaterTarget(profile, trainingType);
+      const waterTarget = calculateWaterTarget(profile, trainingTime);
       nutrition.water = {
         target: waterTarget,
         actual: waterTarget,
@@ -298,14 +298,17 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     profile: UserProfile,
     trainingType: TrainingType | 'rest' = 'rest'
   ): MealPlan => {
-    const newMealPlan = generateMealPlan(profile, trainingType);
+    // 将训练类型映射为训练时间
+    const trainingTime = trainingType === 'rest' ? 'rest' : 'evening';
+    
+    const newMealPlan = generateMealPlan(profile, trainingTime);
     setMealPlan(newMealPlan);
     
     // 计算营养统计（包含水分）
     const nutrition = calculateDailyNutrition(newMealPlan, profile);
     
     // 计算水分目标
-    const waterTarget = calculateWaterTarget(profile, trainingType);
+    const waterTarget = calculateWaterTarget(profile, trainingTime);
     nutrition.water = {
       target: waterTarget,
       actual: waterTarget,
@@ -473,22 +476,13 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
    * 饮食打卡（V1.2.3 新增）
    */
   const checkIn = useCallback((
-    mealsCompleted: { breakfast: boolean; lunch: boolean; dinner: boolean; snack: boolean }
+    _mealsCompleted: { breakfast: boolean; lunch: boolean; dinner: boolean; snack: boolean }
   ) => {
     const dateStr = getDateString(currentDate);
     const existingRecord = dietRecords.find(r => r.date === dateStr);
     const currentUser = getCurrentUser();
     
     if (!currentUser || !existingRecord) return;
-    
-    // 计算实际摄入（这里简化处理，实际应该根据打卡情况计算）
-    const actualNutrition = {
-      calories: existingRecord.dailyNutrition.calories.target,
-      protein: existingRecord.dailyNutrition.protein.target,
-      carbs: existingRecord.dailyNutrition.carbs.target,
-      fat: existingRecord.dailyNutrition.fat.target,
-      water: existingRecord.dailyNutrition.water.target,
-    };
     
     // 更新打卡状态
     const updatedRecord: DietRecord = {

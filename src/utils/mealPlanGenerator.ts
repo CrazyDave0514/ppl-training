@@ -6,7 +6,7 @@
  * V1.2.3 更新：水分自动生成、营养范围计算
  */
 
-import type { UserProfile, MealPlan, DailyNutrition, MealItem, DailyNutritionRange, NutritionRange } from '../types';
+import type { UserProfile, MealPlan, DailyNutrition, MealItem, DailyNutritionRanges, NutritionRange } from '../types';
 import { foodDatabase, getFoodsByCategory } from '../data/foodDatabase';
 import { 
   calculateBMR, 
@@ -372,6 +372,11 @@ export function calculateDailyNutrition(
       actual: Math.round(actualFat),
       remaining: Math.round(targets.fat - actualFat),
     },
+    water: {
+      target: 0,
+      actual: 0,
+      remaining: 0,
+    },
   };
 }
 
@@ -463,7 +468,7 @@ export function calculateWaterTarget(
  * @param nutrition - 每日营养统计
  * @returns 营养范围
  */
-export function calculateNutritionRanges(nutrition: DailyNutrition): DailyNutritionRange {
+export function calculateNutritionRanges(nutrition: DailyNutrition): DailyNutritionRanges {
   // 容差定义
   const tolerances = {
     calories: 0.10,    // ±10%

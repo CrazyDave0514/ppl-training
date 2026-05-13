@@ -489,7 +489,7 @@ const Home: React.FC = () => {
           >
             {/* 周维度展示 */}
             <div className="flex justify-between mb-4">
-              {weekDays.map((wd, index) => {
+              {weekDays.map((wd) => {
                 const dayPlans = getPlansForDay(wd.jsDay);
                 const daySessions = getSessionsForDay(wd.jsDay);
                 const isToday = todayJsDay === wd.jsDay;

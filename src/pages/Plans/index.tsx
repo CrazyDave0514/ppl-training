@@ -4,7 +4,7 @@
  * V1.2.3 更新：周维度视图、圆环进度、饮食打卡、删除功能
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
@@ -111,12 +111,10 @@ const Plans: React.FC = () => {
     dietRecords,
     mealPlan, 
     dailyNutrition, 
-    nutritionRanges,
     generateDailyMealPlan,
     generateWeeklyMealPlan,
     addFoodToMeal,
     removeFoodFromMeal,
-    updateFoodAmount,
     deleteDailyDietPlan,
     checkIn,
     uncheckIn,
@@ -143,10 +141,6 @@ const Plans: React.FC = () => {
   const [showAddFoodModal, setShowAddFoodModal] = useState(false);
   const [selectedFoodId, setSelectedFoodId] = useState<string>('');
   const [foodAmount, setFoodAmount] = useState<number>(100);
-  
-  // 指标超限提示弹窗
-  const [showExceedModal, setShowExceedModal] = useState(false);
-  const [exceededMetrics, setExceededMetrics] = useState<string[]>([]);
   
   // 删除饮食计划确认
   const [showDeleteDietModal, setShowDeleteDietModal] = useState(false);
