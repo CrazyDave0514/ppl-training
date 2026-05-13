@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { getExercisesByCategory, searchExercises } from '../../data/exerciseLibrary';
+import { getExercisesByCategory, searchExercises, exerciseLibrary } from '../../data/exerciseLibrary';
 import type { TrainingType, ExerciseLibraryItem } from '../../types';
 
 /**
@@ -29,15 +29,25 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ category, onSelect, onC
 
   /**
    * 获取当前分类的动作列表
+   * 当 category 为 'free' 时返回全部动作
    */
-  const categoryExercises = useMemo(() => getExercisesByCategory(category), [category]);
+  const categoryExercises = useMemo(() => {
+    if (category === 'free') {
+      return exerciseLibrary;
+    }
+    return getExercisesByCategory(category);
+  }, [category]);
 
   /**
    * 过滤后的动作列表
+   * 当 category 为 'free' 时搜索全部动作
    */
   const filteredExercises = useMemo(() => {
     if (!searchQuery.trim()) {
       return categoryExercises;
+    }
+    if (category === 'free') {
+      return searchExercises(searchQuery);
     }
     return searchExercises(searchQuery).filter((ex) => ex.category === category);
   }, [categoryExercises, searchQuery, category]);
@@ -91,6 +101,12 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ category, onSelect, onC
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 17l-4 4m0 0l-4-4m4 4V3" />
           </svg>
         );
+      case 'free':
+        return (
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+          </svg>
+        );
     }
   };
 
@@ -105,6 +121,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ category, onSelect, onC
         return 'bg-[#007AFF]';
       case 'legs':
         return 'bg-[#34C759]';
+      case 'free':
+        return 'bg-[#AF52DE]';
     }
   };
 
@@ -119,6 +137,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ category, onSelect, onC
         return 'Pull (拉)';
       case 'legs':
         return 'Legs (腿)';
+      case 'free':
+        return '自由动作';
     }
   };
 

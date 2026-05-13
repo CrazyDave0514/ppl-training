@@ -6,7 +6,7 @@
 // ==================== 基础枚举 ====================
 
 /** 训练类型 */
-export type TrainingType = 'push' | 'pull' | 'legs';
+export type TrainingType = 'push' | 'pull' | 'legs' | 'free';
 
 /** 计划来源 */
 export type PlanSource = 'manual' | 'template' | 'ai';

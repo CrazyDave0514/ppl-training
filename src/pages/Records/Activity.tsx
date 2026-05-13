@@ -311,7 +311,7 @@ const Activity: React.FC = () => {
             onClick={handleFabClick}
             className="bg-[#007AFF] text-white text-sm font-medium px-6 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
           >
-            开始训练
+            记录运动数据
           </button>
         </div>
         {/* 浮动添加按钮 */}

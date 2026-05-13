@@ -198,6 +198,7 @@ export const trainingTypeLabels: Record<TrainingType, string> = {
   push: 'Push (推)',
   pull: 'Pull (拉)',
   legs: 'Legs (腿)',
+  free: '自由动作',
 };
 
 /**
@@ -208,6 +209,7 @@ export const trainingTypeColors: Record<TrainingType, string> = {
   push: 'bg-red-50',      // 浅红背景
   pull: 'bg-blue-50',     // 浅蓝背景
   legs: 'bg-green-50',    // 浅绿背景
+  free: 'bg-purple-50',   // 浅紫背景
 };
 
 /**
@@ -217,6 +219,7 @@ export const trainingTypeIconColors: Record<TrainingType, string> = {
   push: 'bg-[#FF3B30]',   // iOS 红
   pull: 'bg-[#007AFF]',   // iOS 蓝
   legs: 'bg-[#34C759]',   // iOS 绿
+  free: 'bg-[#AF52DE]',   // iOS 紫
 };
 
 /**
@@ -226,6 +229,7 @@ export const trainingTypeBorderColors: Record<TrainingType, string> = {
   push: 'border-[#FF3B30]',
   pull: 'border-[#007AFF]',
   legs: 'border-[#34C759]',
+  free: 'border-[#AF52DE]',
 };
 
 /**
@@ -235,6 +239,7 @@ export const trainingTypeTextColors: Record<TrainingType, string> = {
   push: 'text-[#FF3B30]',
   pull: 'text-[#007AFF]',
   legs: 'text-[#34C759]',
+  free: 'text-[#AF52DE]',
 };
 
 /**
@@ -244,4 +249,5 @@ export const trainingTypeLightColors: Record<TrainingType, string> = {
   push: 'bg-red-50 text-[#FF3B30]',
   pull: 'bg-blue-50 text-[#007AFF]',
   legs: 'bg-green-50 text-[#34C759]',
+  free: 'bg-purple-50 text-[#AF52DE]',
 };

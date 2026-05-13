@@ -62,11 +62,19 @@ const QuickCreate: React.FC = () => {
 
   /**
    * 处理选择训练类型
+   * 当选择 'free' 类型时，直接进入预览页面，不需要选择难度
    */
   const handleSelectType = (type: TrainingType) => {
     setSelectedType(type);
     setEditableExercises([]);
     setSelectedDays([]);
+    
+    // 自由动作类型直接进入预览页面，不需要选择难度
+    if (type === 'free') {
+      setShowPreview(true);
+      return;
+    }
+    
     if (selectedLevel) {
       const template = getTemplate(type, selectedLevel);
       if (template) {
@@ -115,16 +123,20 @@ const QuickCreate: React.FC = () => {
 
   /**
    * 处理创建计划
+   * 自由动作类型不需要难度级别
    */
   const handleCreatePlan = () => {
-    if (!currentUser || !selectedType || !selectedLevel) return;
+    if (!currentUser || !selectedType) return;
+    
+    // 自由动作类型不需要难度级别
+    if (selectedType !== 'free' && !selectedLevel) return;
 
-    const name = planName.trim() || (selectedTemplate?.name || '');
+    const name = planName.trim() || (selectedTemplate?.name || (selectedType === 'free' ? '自由训练' : ''));
     
     // 使用可编辑的动作列表创建计划
     const newPlan = createPlan({
       userId: currentUser.id,
-      name,
+      name: name || '自由训练',
       type: selectedType,
       source: 'template' as const,
       exercises: editableExercises,
@@ -157,6 +169,12 @@ const QuickCreate: React.FC = () => {
         return (
           <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 17l-4 4m0 0l-4-4m4 4V3" />
+          </svg>
+        );
+      case 'free':
+        return (
+          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
           </svg>
         );
     }
@@ -231,7 +249,7 @@ const QuickCreate: React.FC = () => {
         {!showPreview && (
           <section className="mb-8 animate-slide-up">
             <h2 className="text-lg font-bold text-[#1C1C1E] mb-4 px-1">选择训练类型</h2>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               {trainingTypes.map((type, index) => (
                 <button
                   key={type}
@@ -255,11 +273,33 @@ const QuickCreate: React.FC = () => {
                 </button>
               ))}
             </div>
+            {/* 自由动作卡片 - 单独一行 */}
+            <button
+              onClick={() => handleSelectType('free')}
+              className={`w-full p-5 rounded-2xl border-2 transition-all duration-200 animate-slide-up ${
+                selectedType === 'free'
+                  ? 'border-[#AF52DE] bg-white shadow-md'
+                  : 'border-transparent bg-white shadow-sm hover:shadow-md'
+              }`}
+              style={{ animationDelay: '150ms' }}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#AF52DE]">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <h3 className="font-bold text-[#1C1C1E] text-lg">自由动作</h3>
+                  <p className="text-sm text-[#8E8E93]">自定义动作组合</p>
+                </div>
+              </div>
+            </button>
           </section>
         )}
 
-        {/* 选择难度级别 */}
-        {!showPreview && selectedType && (
+        {/* 选择难度级别 - 自由动作类型不需要选择难度 */}
+        {!showPreview && selectedType && selectedType !== 'free' && (
           <section className="animate-slide-up" style={{ animationDelay: '100ms' }}>
             <h2 className="text-lg font-bold text-[#1C1C1E] mb-4 px-1">选择难度级别</h2>
             <div className="space-y-3">
@@ -293,8 +333,8 @@ const QuickCreate: React.FC = () => {
           </section>
         )}
 
-        {/* 预览和确认 */}
-        {showPreview && selectedTemplate && (
+        {/* 预览和确认 - 支持自由动作类型 */}
+        {showPreview && (selectedTemplate || selectedType === 'free') && (
           <section className="animate-fade-in">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-[#1C1C1E]">计划预览</h2>
@@ -320,7 +360,7 @@ const QuickCreate: React.FC = () => {
                 type="text"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
-                placeholder={selectedTemplate.name}
+                placeholder={selectedTemplate?.name || '自由训练'}
                 className="w-full bg-[#F2F2F7] text-[#1C1C1E] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-all"
               />
             </div>
@@ -328,13 +368,14 @@ const QuickCreate: React.FC = () => {
             {/* 计划信息 */}
             <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${trainingTypeIconColors[selectedTemplate.type]}`}>
-                  {getTypeIcon(selectedTemplate.type)}
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedType ? trainingTypeIconColors[selectedType] : 'bg-[#AF52DE]'}`}>
+                  {selectedType && getTypeIcon(selectedType)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-[#1C1C1E]">{planName.trim() || selectedTemplate.name}</h3>
-                  <p className={`text-sm font-medium ${trainingTypeTextColors[selectedTemplate.type]}`}>
-                    {trainingTypeLabels[selectedTemplate.type]} · {difficultyLabels[selectedTemplate.level]}
+                  <h3 className="font-bold text-[#1C1C1E]">{planName.trim() || (selectedTemplate?.name || '自由训练')}</h3>
+                  <p className={`text-sm font-medium ${selectedType ? trainingTypeTextColors[selectedType] : 'text-[#AF52DE]'}`}>
+                    {selectedType && trainingTypeLabels[selectedType]}
+                    {selectedTemplate && ` · ${difficultyLabels[selectedTemplate.level]}`}
                   </p>
                 </div>
               </div>
@@ -345,14 +386,8 @@ const QuickCreate: React.FC = () => {
                   <p className="text-sm text-[#8E8E93]">包含 {editableExercises.length} 个动作：</p>
                   <button
                     onClick={() => {
-                      const newEx: Exercise = {
-                        id: `ex-${Date.now()}`,
-                        name: '新动作',
-                        defaultSets: 3,
-                        defaultReps: 10,
-                        defaultWeight: 0,
-                      };
-                      setEditableExercises([...editableExercises, newEx]);
+                      setEditingExerciseIndex(editableExercises.length);
+                      setShowExercisePicker(true);
                     }}
                     className="text-xs text-[#007AFF] font-medium flex items-center gap-1"
                   >
@@ -476,13 +511,27 @@ const QuickCreate: React.FC = () => {
         <ExercisePicker
           category={selectedType}
           onSelect={(exercise) => {
-            const updated = [...editableExercises];
-            updated[editingExerciseIndex] = {
-              ...updated[editingExerciseIndex],
-              name: exercise.name,
-              libraryId: exercise.id,
-            };
-            setEditableExercises(updated);
+            // 如果是添加新动作（index === length），则添加到列表末尾
+            if (editingExerciseIndex === editableExercises.length) {
+              const newEx: Exercise = {
+                id: `ex-${Date.now()}`,
+                name: exercise.name,
+                defaultSets: 3,
+                defaultReps: 10,
+                defaultWeight: 0,
+                libraryId: exercise.id,
+              };
+              setEditableExercises([...editableExercises, newEx]);
+            } else {
+              // 否则编辑现有动作
+              const updated = [...editableExercises];
+              updated[editingExerciseIndex] = {
+                ...updated[editingExerciseIndex],
+                name: exercise.name,
+                libraryId: exercise.id,
+              };
+              setEditableExercises(updated);
+            }
             setShowExercisePicker(false);
             setEditingExerciseIndex(null);
           }}
