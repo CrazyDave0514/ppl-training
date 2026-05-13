@@ -235,14 +235,14 @@ const Activity: React.FC = () => {
 
   /**
    * 处理 FAB 按钮或"开始训练"按钮点击
-   * @description 未登录时提示登录，已登录时跳转到计划页面
+   * @description 未登录时提示登录，已登录时跳转到开始训练页面
    */
   const handleFabClick = () => {
     if (!currentUser) {
       alert('请先登录后再操作');
       return;
     }
-    navigate('/plans');
+    navigate('/training');
   };
 
   /**
