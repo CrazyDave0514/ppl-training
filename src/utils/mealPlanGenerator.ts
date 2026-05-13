@@ -69,12 +69,63 @@ export function generateMealPlan(
   const dinner = generateDinner(mealTargets.dinner);
   const snack = generateSnack(mealTargets.snack);
   
-  return {
-    breakfast,
-    lunch,
-    dinner,
-    snack,
-  };
+  const mealPlan = { breakfast, lunch, dinner, snack };
+  
+  // 5. 补齐营养缺口：检查各维度是否达标，不足则追加食物
+  fillNutritionGaps(mealPlan, targets);
+  
+  return mealPlan;
+}
+
+/**
+ * 补齐营养缺口
+ * @description 检查生成的餐食计划各维度是否达标，不足则追加高对应营养素的食物
+ * V1.2.3 更新：循环补齐直到各维度达标
+ */
+function fillNutritionGaps(mealPlan: MealPlan, targets: { calories: number; protein: number; carbs: number; fat: number }): void {
+  // 最多补齐3轮，避免无限循环
+  for (let round = 0; round < 3; round++) {
+    // 重新计算当前所有食物的营养总和
+    let totalCal = 0, totalPro = 0, totalCarb = 0, totalFat = 0;
+    const allMeals = [...mealPlan.breakfast, ...mealPlan.lunch, ...mealPlan.dinner, ...mealPlan.snack];
+    for (const item of allMeals) {
+      const food = foodDatabase.find(f => f.id === item.foodId);
+      if (food) {
+        const ratio = item.amount / 100;
+        totalCal += food.calories * ratio;
+        totalPro += food.protein * ratio;
+        totalCarb += food.carbs * ratio;
+        totalFat += food.fat * ratio;
+      }
+    }
+    
+    let filled = false;
+    
+    // 碳水缺口：追加米饭到午餐（米饭高碳水低脂肪）
+    const carbGap = targets.carbs - totalCarb;
+    if (carbGap > 15) {
+      const rice = foodDatabase.find(f => f.id === 'white_rice');
+      if (rice && rice.carbs > 0) {
+        const neededAmount = Math.round((carbGap / rice.carbs) * 100);
+        mealPlan.lunch.push({ foodId: rice.id, amount: Math.max(20, neededAmount) });
+        filled = true;
+      }
+    }
+    
+    // 蛋白质缺口：追加鸡胸肉到午餐（高蛋白低脂肪）
+    const proGap = targets.protein - totalPro;
+    if (proGap > 8) {
+      const chicken = foodDatabase.find(f => f.id === 'chicken_breast');
+      if (chicken && chicken.protein > 0) {
+        const neededAmount = Math.round((proGap / chicken.protein) * 100);
+        mealPlan.lunch.push({ foodId: chicken.id, amount: Math.max(20, neededAmount) });
+        filled = true;
+      }
+    }
+    
+    // 如果没有需要补齐的维度，退出循环
+    if (!filled) break;
+  }
 }
 
 /**
@@ -199,9 +250,9 @@ function generateBreakfast(targets: MealNutritionTarget): MealItem[] {
   const carbFoods = getFoodsByCategory('carbs');
   const fruitFoods = getFoodsByCategory('fruit');
   
-  const egg = proteinFoods.find(f => f.id === 'egg');
+  const egg = proteinFoods.find(f => f.id === 'egg_whole');
   const milk = proteinFoods.find(f => f.id === 'milk');
-  const oats = carbFoods.find(f => f.id === 'oats');
+  const oats = carbFoods.find(f => f.id === 'oatmeal');
   const banana = fruitFoods.find(f => f.id === 'banana');
   
   // 基础分量对应的基础营养
@@ -236,7 +287,7 @@ function generateLunch(targets: MealNutritionTarget): MealItem[] {
   const fatFoods = getFoodsByCategory('fat');
   
   const chicken = proteinFoods.find(f => f.id === 'chicken_breast');
-  const rice = carbFoods.find(f => f.id === 'rice');
+  const rice = carbFoods.find(f => f.id === 'white_rice');
   const broccoli = vegetableFoods.find(f => f.id === 'broccoli');
   const oliveOil = fatFoods.find(f => f.id === 'olive_oil');
   

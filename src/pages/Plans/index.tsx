@@ -403,13 +403,13 @@ const Plans: React.FC = () => {
             )}
 
             {/* 动作计划 - 侧边悬浮添加按钮 */}
-            <div className="fixed bottom-24 right-4 z-30">
+            <div className="fixed bottom-24 right-5 z-10">
               <button
                 onClick={() => navigate('/quick-create')}
-                className="w-14 h-14 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"
+                className="w-16 h-16 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform"
                 title="快速创建计划"
               >
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               </button>
             </div>
           </>
@@ -449,22 +449,36 @@ const Plans: React.FC = () => {
                       const dateStr = date.toISOString().split('T')[0];
                       const dayRecord = dietRecords.find(r => r.date === dateStr);
 
-                      // 计算当天实际摄入
-                      let dayCalories = 0;
-                      let dayTarget = 2000;
+                      // 计算当天4维度实际摄入（仅已打卡菜品）
+                      let dayCalories = 0, dayProtein = 0, dayCarbs = 0, dayFat = 0;
+                      let dayTargetCal = 0, dayTargetPro = 0, dayTargetCarb = 0, dayTargetFat = 0;
                       if (dayRecord) {
-                        dayTarget = dayRecord.dailyNutrition.calories.target;
+                        dayTargetCal = dayRecord.dailyNutrition.calories.target;
+                        dayTargetPro = dayRecord.dailyNutrition.protein.target;
+                        dayTargetCarb = dayRecord.dailyNutrition.carbs.target;
+                        dayTargetFat = dayRecord.dailyNutrition.fat.target;
                         (['breakfast', 'lunch', 'dinner', 'snack'] as const).forEach(mt => {
                           dayRecord.mealPlan[mt].forEach(item => {
                             if (item.isCompleted) {
                               const food = getFoodById(item.foodId);
-                              if (food) dayCalories += food.calories * (item.amount / 100);
+                              if (food) {
+                                const ratio = item.amount / 100;
+                                dayCalories += food.calories * ratio;
+                                dayProtein += food.protein * ratio;
+                                dayCarbs += food.carbs * ratio;
+                                dayFat += food.fat * ratio;
+                              }
                             }
                           });
                         });
                       }
 
-                      const progress = dayTarget > 0 ? Math.min(dayCalories / dayTarget, 1) : 0;
+                      // 4维度综合进度：各维度完成率的平均值
+                      const calProgress = dayTargetCal > 0 ? Math.min(dayCalories / dayTargetCal, 1) : 0;
+                      const proProgress = dayTargetPro > 0 ? Math.min(dayProtein / dayTargetPro, 1) : 0;
+                      const carbProgress = dayTargetCarb > 0 ? Math.min(dayCarbs / dayTargetCarb, 1) : 0;
+                      const fatProgress = dayTargetFat > 0 ? Math.min(dayFat / dayTargetFat, 1) : 0;
+                      const progress = (calProgress + proProgress + carbProgress + fatProgress) / 4;
 
                       return (
                         <button
@@ -591,13 +605,13 @@ const Plans: React.FC = () => {
                 )}
 
                 {/* 饮食计划 - 侧边悬浮添加食物按钮 */}
-                <div className="fixed bottom-24 right-4 z-30">
+                <div className="fixed bottom-24 right-5 z-10">
                   <button
                     onClick={handleOpenAddFood}
-                    className="w-14 h-14 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"
+                    className="w-16 h-16 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform"
                     title="添加食物"
                   >
-                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                   </button>
                 </div>
               </>
