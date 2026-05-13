@@ -73,7 +73,7 @@ const Training: React.FC = () => {
         navigate('/plans');
       }
     } else {
-      const newSession = startFreeTraining('push', '自由训练');
+      const newSession = startFreeTraining('free', '自由训练');
       setSession(newSession);
     }
   }, [currentUser, planId, getPlan, startTraining, startFreeTraining, currentSession, navigate]);
@@ -169,6 +169,11 @@ const Training: React.FC = () => {
    * 处理添加动作
    */
   const handleAddExercise = (libraryExercise: { id: string; name: string; category: string }) => {
+    if (!session) {
+      console.error('Cannot add exercise: session is null');
+      return;
+    }
+    
     const newExercise: SessionExercise = {
       id: `ex-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: libraryExercise.name,
@@ -181,6 +186,7 @@ const Training: React.FC = () => {
       ...session,
       exercises: [...session.exercises, newExercise],
     };
+    
     updateSessionState(updatedSession);
     setShowExercisePicker(false);
     setExpandedExercise(newExercise.id);
