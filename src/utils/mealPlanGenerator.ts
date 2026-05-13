@@ -20,6 +20,7 @@ type TrainingTime = 'morning' | 'afternoon' | 'evening' | 'rest';
 
 /**
  * 生成每日餐食计划
+ * @description V1.2.3 更新：根据营养目标动态调整食物分量，确保全打卡后圆环打满
  * @param profile - 用户画像
  * @param trainingTime - 训练时间（影响餐食分配）
  * @returns 餐食计划
@@ -34,11 +35,39 @@ export function generateMealPlan(
   // 2. 根据训练时间分配每餐营养比例
   const mealDistribution = getMealDistribution(trainingTime);
   
-  // 3. 生成每餐的食物组合
-  const breakfast = generateBreakfast(mealDistribution.breakfast.calories, targets);
-  const lunch = generateLunch(mealDistribution.lunch.calories, targets);
-  const dinner = generateDinner(mealDistribution.dinner.calories, targets);
-  const snack = generateSnack(mealDistribution.snack.calories, targets);
+  // 3. 计算每餐的营养目标
+  const mealTargets = {
+    breakfast: {
+      calories: Math.round(targets.calories * mealDistribution.breakfast.calories),
+      protein: Math.round(targets.protein * mealDistribution.breakfast.calories),
+      carbs: Math.round(targets.carbs * mealDistribution.breakfast.calories * mealDistribution.breakfast.carbsRatio),
+      fat: Math.round(targets.fat * mealDistribution.breakfast.calories),
+    },
+    lunch: {
+      calories: Math.round(targets.calories * mealDistribution.lunch.calories),
+      protein: Math.round(targets.protein * mealDistribution.lunch.calories),
+      carbs: Math.round(targets.carbs * mealDistribution.lunch.calories * mealDistribution.lunch.carbsRatio),
+      fat: Math.round(targets.fat * mealDistribution.lunch.calories),
+    },
+    dinner: {
+      calories: Math.round(targets.calories * mealDistribution.dinner.calories),
+      protein: Math.round(targets.protein * mealDistribution.dinner.calories),
+      carbs: Math.round(targets.carbs * mealDistribution.dinner.calories * mealDistribution.dinner.carbsRatio),
+      fat: Math.round(targets.fat * mealDistribution.dinner.calories),
+    },
+    snack: {
+      calories: Math.round(targets.calories * mealDistribution.snack.calories),
+      protein: Math.round(targets.protein * mealDistribution.snack.calories),
+      carbs: Math.round(targets.carbs * mealDistribution.snack.calories * mealDistribution.snack.carbsRatio),
+      fat: Math.round(targets.fat * mealDistribution.snack.calories),
+    },
+  };
+  
+  // 4. 生成每餐的食物组合（传入营养目标，动态调整分量）
+  const breakfast = generateBreakfast(mealTargets.breakfast);
+  const lunch = generateLunch(mealTargets.lunch);
+  const dinner = generateDinner(mealTargets.dinner);
+  const snack = generateSnack(mealTargets.snack);
   
   return {
     breakfast,
@@ -149,42 +178,46 @@ function getMealDistribution(trainingTime: TrainingTime): {
 }
 
 /**
+ * 营养目标接口
+ */
+interface MealNutritionTarget {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+/**
  * 生成早餐
  * 重点：优质蛋白质 + 复合碳水 + 适量脂肪
+ * V1.2.3 更新：根据营养目标动态调整分量
  */
-function generateBreakfast(
-  _calorieRatio: number,
-  _targets: { calories: number; protein: number; carbs: number; fat: number }
-): MealItem[] {
+function generateBreakfast(targets: MealNutritionTarget): MealItem[] {
   const items: MealItem[] = [];
   
-  // 蛋白质来源（鸡蛋、牛奶、希腊酸奶）
   const proteinFoods = getFoodsByCategory('protein');
+  const carbFoods = getFoodsByCategory('carbs');
+  const fruitFoods = getFoodsByCategory('fruit');
+  
   const egg = proteinFoods.find(f => f.id === 'egg');
   const milk = proteinFoods.find(f => f.id === 'milk');
-  
-  if (egg) {
-    items.push({ foodId: egg.id, amount: 100 }); // 2个鸡蛋约100g
-  }
-  if (milk) {
-    items.push({ foodId: milk.id, amount: 250 }); // 一杯牛奶
-  }
-  
-  // 碳水来源（燕麦、全麦面包）
-  const carbFoods = getFoodsByCategory('carbs');
   const oats = carbFoods.find(f => f.id === 'oats');
-  
-  if (oats) {
-    items.push({ foodId: oats.id, amount: 50 }); // 50g燕麦
-  }
-  
-  // 水果补充
-  const fruitFoods = getFoodsByCategory('fruit');
   const banana = fruitFoods.find(f => f.id === 'banana');
   
-  if (banana) {
-    items.push({ foodId: banana.id, amount: 100 }); // 一根香蕉
-  }
+  // 基础分量对应的基础营养
+  const baseEggCal = egg ? egg.calories * 1.0 : 0; // 100g
+  const baseMilkCal = milk ? milk.calories * 2.5 : 0; // 250g
+  const baseOatsCal = oats ? oats.calories * 0.5 : 0; // 50g
+  const baseBananaCal = banana ? banana.calories * 1.0 : 0; // 100g
+  const baseTotalCal = baseEggCal + baseMilkCal + baseOatsCal + baseBananaCal;
+  
+  // 按热量目标等比缩放所有食物
+  const calScale = baseTotalCal > 0 ? targets.calories / baseTotalCal : 1;
+  
+  if (egg) items.push({ foodId: egg.id, amount: Math.max(50, Math.round(100 * calScale)) });
+  if (milk) items.push({ foodId: milk.id, amount: Math.max(100, Math.round(250 * calScale)) });
+  if (oats) items.push({ foodId: oats.id, amount: Math.max(20, Math.round(50 * calScale)) });
+  if (banana) items.push({ foodId: banana.id, amount: Math.max(50, Math.round(100 * calScale)) });
   
   return items;
 }
@@ -192,44 +225,34 @@ function generateBreakfast(
 /**
  * 生成午餐
  * 重点：充足蛋白质 + 主食 + 蔬菜
+ * V1.2.3 更新：根据营养目标动态调整分量
  */
-function generateLunch(
-  _calorieRatio: number,
-  _targets: { calories: number; protein: number; carbs: number; fat: number }
-): MealItem[] {
+function generateLunch(targets: MealNutritionTarget): MealItem[] {
   const items: MealItem[] = [];
   
-  // 蛋白质来源（鸡胸肉、鱼类、牛肉）
   const proteinFoods = getFoodsByCategory('protein');
-  const chicken = proteinFoods.find(f => f.id === 'chicken_breast');
-  
-  if (chicken) {
-    items.push({ foodId: chicken.id, amount: 150 }); // 150g鸡胸肉
-  }
-  
-  // 主食（米饭、糙米）
   const carbFoods = getFoodsByCategory('carbs');
-  const rice = carbFoods.find(f => f.id === 'rice');
-  
-  if (rice) {
-    items.push({ foodId: rice.id, amount: 200 }); // 200g米饭
-  }
-  
-  // 蔬菜
   const vegetableFoods = getFoodsByCategory('vegetable');
-  const broccoli = vegetableFoods.find(f => f.id === 'broccoli');
-  
-  if (broccoli) {
-    items.push({ foodId: broccoli.id, amount: 150 }); // 150g西兰花
-  }
-  
-  // 健康脂肪（橄榄油烹饪）
   const fatFoods = getFoodsByCategory('fat');
+  
+  const chicken = proteinFoods.find(f => f.id === 'chicken_breast');
+  const rice = carbFoods.find(f => f.id === 'rice');
+  const broccoli = vegetableFoods.find(f => f.id === 'broccoli');
   const oliveOil = fatFoods.find(f => f.id === 'olive_oil');
   
-  if (oliveOil) {
-    items.push({ foodId: oliveOil.id, amount: 10 }); // 10g橄榄油
-  }
+  // 基础分量对应的基础营养
+  const baseChickenCal = chicken ? chicken.calories * 1.5 : 0; // 150g
+  const baseRiceCal = rice ? rice.calories * 2.0 : 0; // 200g
+  const baseBroccoliCal = broccoli ? broccoli.calories * 1.5 : 0; // 150g
+  const baseOilCal = oliveOil ? oliveOil.calories * 0.1 : 0; // 10g
+  const baseTotalCal = baseChickenCal + baseRiceCal + baseBroccoliCal + baseOilCal;
+  
+  const calScale = baseTotalCal > 0 ? targets.calories / baseTotalCal : 1;
+  
+  if (chicken) items.push({ foodId: chicken.id, amount: Math.max(50, Math.round(150 * calScale)) });
+  if (rice) items.push({ foodId: rice.id, amount: Math.max(50, Math.round(200 * calScale)) });
+  if (broccoli) items.push({ foodId: broccoli.id, amount: Math.max(50, Math.round(150 * calScale)) });
+  if (oliveOil) items.push({ foodId: oliveOil.id, amount: Math.max(5, Math.round(10 * calScale)) });
   
   return items;
 }
@@ -237,44 +260,36 @@ function generateLunch(
 /**
  * 生成晚餐
  * 重点：蛋白质 + 适量碳水 + 大量蔬菜
+ * V1.2.3 更新：根据营养目标动态调整分量
  */
-function generateDinner(
-  _calorieRatio: number,
-  _targets: { calories: number; protein: number; carbs: number; fat: number }
-): MealItem[] {
+function generateDinner(targets: MealNutritionTarget): MealItem[] {
   const items: MealItem[] = [];
   
-  // 蛋白质来源（鱼类、豆腐、瘦肉）
   const proteinFoods = getFoodsByCategory('protein');
+  const carbFoods = getFoodsByCategory('carbs');
+  const vegetableFoods = getFoodsByCategory('vegetable');
+  
   const salmon = proteinFoods.find(f => f.id === 'salmon');
   const tofu = proteinFoods.find(f => f.id === 'tofu');
-  
-  if (salmon) {
-    items.push({ foodId: salmon.id, amount: 120 }); // 120g三文鱼
-  }
-  if (tofu) {
-    items.push({ foodId: tofu.id, amount: 100 }); // 100g豆腐
-  }
-  
-  // 主食（比午餐少一些）
-  const carbFoods = getFoodsByCategory('carbs');
   const sweetPotato = carbFoods.find(f => f.id === 'sweet_potato');
-  
-  if (sweetPotato) {
-    items.push({ foodId: sweetPotato.id, amount: 150 }); // 150g红薯
-  }
-  
-  // 更多蔬菜
-  const vegetableFoods = getFoodsByCategory('vegetable');
   const spinach = vegetableFoods.find(f => f.id === 'spinach');
   const tomato = vegetableFoods.find(f => f.id === 'tomato');
   
-  if (spinach) {
-    items.push({ foodId: spinach.id, amount: 100 });
-  }
-  if (tomato) {
-    items.push({ foodId: tomato.id, amount: 100 });
-  }
+  // 基础分量对应的基础营养
+  const baseSalmonCal = salmon ? salmon.calories * 1.2 : 0; // 120g
+  const baseTofuCal = tofu ? tofu.calories * 1.0 : 0; // 100g
+  const baseSweetPotatoCal = sweetPotato ? sweetPotato.calories * 1.5 : 0; // 150g
+  const baseSpinachCal = spinach ? spinach.calories * 1.0 : 0; // 100g
+  const baseTomatoCal = tomato ? tomato.calories * 1.0 : 0; // 100g
+  const baseTotalCal = baseSalmonCal + baseTofuCal + baseSweetPotatoCal + baseSpinachCal + baseTomatoCal;
+  
+  const calScale = baseTotalCal > 0 ? targets.calories / baseTotalCal : 1;
+  
+  if (salmon) items.push({ foodId: salmon.id, amount: Math.max(50, Math.round(120 * calScale)) });
+  if (tofu) items.push({ foodId: tofu.id, amount: Math.max(50, Math.round(100 * calScale)) });
+  if (sweetPotato) items.push({ foodId: sweetPotato.id, amount: Math.max(50, Math.round(150 * calScale)) });
+  if (spinach) items.push({ foodId: spinach.id, amount: Math.max(50, Math.round(100 * calScale)) });
+  if (tomato) items.push({ foodId: tomato.id, amount: Math.max(50, Math.round(100 * calScale)) });
   
   return items;
 }
@@ -282,36 +297,30 @@ function generateDinner(
 /**
  * 生成加餐/零食
  * 重点：蛋白质补充 + 健康脂肪 + 少量碳水
+ * V1.2.3 更新：根据营养目标动态调整分量
  */
-function generateSnack(
-  _calorieRatio: number,
-  _targets: { calories: number; protein: number; carbs: number; fat: number }
-): MealItem[] {
+function generateSnack(targets: MealNutritionTarget): MealItem[] {
   const items: MealItem[] = [];
   
-  // 坚果（健康脂肪 + 蛋白质）
   const fatFoods = getFoodsByCategory('fat');
-  const almonds = fatFoods.find(f => f.id === 'almonds');
-  
-  if (almonds) {
-    items.push({ foodId: almonds.id, amount: 30 }); // 30g杏仁
-  }
-  
-  // 蛋白质补充（希腊酸奶）
   const proteinFoods = getFoodsByCategory('protein');
-  const yogurt = proteinFoods.find(f => f.id === 'greek_yogurt');
-  
-  if (yogurt) {
-    items.push({ foodId: yogurt.id, amount: 150 }); // 150g希腊酸奶
-  }
-  
-  // 水果
   const fruitFoods = getFoodsByCategory('fruit');
+  
+  const almonds = fatFoods.find(f => f.id === 'almonds');
+  const yogurt = proteinFoods.find(f => f.id === 'greek_yogurt');
   const apple = fruitFoods.find(f => f.id === 'apple');
   
-  if (apple) {
-    items.push({ foodId: apple.id, amount: 150 }); // 一个苹果
-  }
+  // 基础分量对应的基础营养
+  const baseAlmondsCal = almonds ? almonds.calories * 0.3 : 0; // 30g
+  const baseYogurtCal = yogurt ? yogurt.calories * 1.5 : 0; // 150g
+  const baseAppleCal = apple ? apple.calories * 1.5 : 0; // 150g
+  const baseTotalCal = baseAlmondsCal + baseYogurtCal + baseAppleCal;
+  
+  const calScale = baseTotalCal > 0 ? targets.calories / baseTotalCal : 1;
+  
+  if (almonds) items.push({ foodId: almonds.id, amount: Math.max(10, Math.round(30 * calScale)) });
+  if (yogurt) items.push({ foodId: yogurt.id, amount: Math.max(50, Math.round(150 * calScale)) });
+  if (apple) items.push({ foodId: apple.id, amount: Math.max(50, Math.round(150 * calScale)) });
   
   return items;
 }

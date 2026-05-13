@@ -61,7 +61,7 @@ const MultiArcProgress: React.FC<{
     fat: { actual: number; target: number };
   };
   size?: number;
-}> = ({ nutrition, size = 200 }) => {
+}> = ({ nutrition, size = 240 }) => {
   const center = size / 2;
   const startAngle = 150;
   const endAngle = 390;
@@ -82,16 +82,16 @@ const MultiArcProgress: React.FC<{
   };
 
   const layers = [
-    { radius: 85, color: '#FF9500', value: nutrition.carbs.actual, max: nutrition.carbs.target },
-    { radius: 72, color: '#007AFF', value: nutrition.protein.actual, max: nutrition.protein.target },
-    { radius: 59, color: '#FF3B30', value: nutrition.fat.actual, max: nutrition.fat.target },
-    { radius: 46, color: '#34C759', value: nutrition.calories.actual, max: nutrition.calories.target },
+    { radius: 105, color: '#FF9500', value: nutrition.carbs.actual, max: nutrition.carbs.target },
+    { radius: 90, color: '#007AFF', value: nutrition.protein.actual, max: nutrition.protein.target },
+    { radius: 75, color: '#FF3B30', value: nutrition.fat.actual, max: nutrition.fat.target },
+    { radius: 60, color: '#34C759', value: nutrition.calories.actual, max: nutrition.calories.target },
   ];
 
   const totalAngle = endAngle - startAngle;
 
   return (
-    <div className="relative flex justify-center" style={{ width: size, height: size * 0.8 }}>
+    <div className="relative flex justify-center" style={{ width: size, height: size * 0.75 }}>
       <svg width={size} height={size} className="overflow-visible">
         {layers.map((layer, index) => {
           const progress = layer.max > 0 ? Math.min(layer.value / layer.max, 1) : 0;
@@ -100,15 +100,15 @@ const MultiArcProgress: React.FC<{
           const progressPath = describeArc(layer.radius, startAngle, currentAngle);
           return (
             <g key={index}>
-              <path d={bgPath} fill="none" stroke="#E5E5EA" strokeWidth={8} strokeLinecap="round" />
-              <path d={progressPath} fill="none" stroke={layer.color} strokeWidth={8} strokeLinecap="round" style={{ transition: 'all 0.5s ease' }} />
+              <path d={bgPath} fill="none" stroke="#E5E5EA" strokeWidth={12} strokeLinecap="round" />
+              <path d={progressPath} fill="none" stroke={layer.color} strokeWidth={12} strokeLinecap="round" style={{ transition: 'all 0.5s ease' }} />
             </g>
           );
         })}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
-        <span className="text-2xl font-bold text-[#1C1C1E]">{nutrition.calories.actual}</span>
-        <span className="text-[10px] text-[#8E8E93]">已摄入 / {nutrition.calories.target} kcal</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
+        <span className="text-3xl font-bold text-[#1C1C1E]">{nutrition.calories.actual}</span>
+        <span className="text-xs text-[#8E8E93] mt-0.5">/ {nutrition.calories.target} kcal</span>
       </div>
     </div>
   );
@@ -594,7 +594,7 @@ const Plans: React.FC = () => {
                 <div className="fixed bottom-24 right-4 z-30">
                   <button
                     onClick={handleOpenAddFood}
-                    className="w-14 h-14 bg-[#34C759] text-white rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"
+                    className="w-14 h-14 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"
                     title="添加食物"
                   >
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
