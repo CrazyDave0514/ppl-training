@@ -3,9 +3,10 @@
  * @description 饮食计划生成器
  * 根据用户画像和训练时间生成个性化的每日餐食计划
  * 使用 Mifflin-St Jeor 公式计算卡路里需求
+ * V1.2.3 更新：水分自动生成、营养范围计算
  */
 
-import type { UserProfile, MealPlan, DailyNutrition, MealItem } from '../types';
+import type { UserProfile, MealPlan, DailyNutrition, MealItem, DailyNutritionRange, NutritionRange } from '../types';
 import { foodDatabase, getFoodsByCategory } from '../data/foodDatabase';
 import { 
   calculateBMR, 
@@ -422,5 +423,71 @@ export function calculateMealNutrition(mealItems: MealItem[]): {
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fat: Math.round(fat),
+  };
+}
+
+/**
+ * 计算每日水分目标（V1.2.3 新增）
+ * @param profile - 用户画像
+ * @param trainingTime - 训练时间
+ * @returns 水分目标（ml）
+ */
+export function calculateWaterTarget(
+  profile: UserProfile,
+  trainingTime: 'morning' | 'afternoon' | 'evening' | 'rest' = 'rest'
+): number {
+  // 基础水分：体重 × 30ml
+  let baseWater = profile.currentWeight * 30;
+  
+  // 训练日增加水分
+  if (trainingTime !== 'rest') {
+    // 训练日额外补充 500-1000ml
+    baseWater += 750;
+  }
+  
+  // 根据活动水平调整
+  const activityFactors: Record<string, number> = {
+    sedentary: 1.0,
+    light: 1.1,
+    moderate: 1.2,
+    active: 1.3,
+    very_active: 1.4,
+  };
+  const factor = activityFactors[profile.activityLevel] || 1.0;
+  
+  return Math.round(baseWater * factor);
+}
+
+/**
+ * 计算营养范围（V1.2.3 新增）
+ * @param nutrition - 每日营养统计
+ * @returns 营养范围
+ */
+export function calculateNutritionRanges(nutrition: DailyNutrition): DailyNutritionRange {
+  // 容差定义
+  const tolerances = {
+    calories: 0.10,    // ±10%
+    protein: 0.10,     // ±10%
+    carbs: 0.15,       // ±15%
+    fat: 0.15,         // ±15%
+    water: 0.20,       // ±20%
+  };
+  
+  /**
+   * 创建单个营养范围
+   */
+  const createRange = (target: number, tolerance: number): NutritionRange => ({
+    target,
+    min: Math.round(target * (1 - tolerance)),
+    max: Math.round(target * (1 + tolerance)),
+    tolerance,
+  });
+  
+  return {
+    calories: createRange(nutrition.calories.target, tolerances.calories),
+    protein: createRange(nutrition.protein.target, tolerances.protein),
+    carbs: createRange(nutrition.carbs.target, tolerances.carbs),
+    fat: createRange(nutrition.fat.target, tolerances.fat),
+    water: createRange(nutrition.water.target, tolerances.water),
   };
 }

@@ -1,12 +1,14 @@
 /**
  * 首页组件
  * @description Apple Health 风格首页，用户切换、今日状态、历史列表
+ * V1.2.3 更新：新增今日饮食模块
  */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
+import { useDiet } from '../../store/DietContext';
 import type { TrainingSession, TrainingPlan } from '../../types';
 import { getSessionsByUser } from '../../utils/storage';
 import {
@@ -25,6 +27,7 @@ const Home: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { plans } = usePlan();
+  const { dailyNutrition, mealPlan } = useDiet();
   const [newUserName, setNewUserName] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   // 选中的星期（默认今天）
@@ -469,8 +472,96 @@ const Home: React.FC = () => {
             </div>
           </section>
 
-        {/* 快捷操作 */}
+        {/* 今日饮食模块（V1.2.3 新增） */}
         <section className="animate-slide-up" style={{ animationDelay: '50ms' }}>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-lg font-bold text-[#1C1C1E]">今日饮食</h2>
+            <button
+              onClick={() => navigate('/plans')}
+              className="text-sm text-[#007AFF] font-medium"
+            >
+              查看详情 &gt;
+            </button>
+          </div>
+          <div 
+            onClick={() => navigate('/plans')}
+            className="bg-white rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            {mealPlan && mealPlan.breakfast.length > 0 ? (
+              /* 有饮食数据时显示五大营养素 */
+              <div className="grid grid-cols-5 gap-2">
+                {/* 热量 */}
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">热量</p>
+                  <p className="text-sm font-bold text-[#34C759]">{dailyNutrition.calories.actual}</p>
+                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.calories.target}</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#34C759] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.calories.actual / dailyNutrition.calories.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                {/* 蛋白质 */}
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">蛋白质</p>
+                  <p className="text-sm font-bold text-[#007AFF]">{dailyNutrition.protein.actual}g</p>
+                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.protein.target}g</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#007AFF] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.protein.actual / dailyNutrition.protein.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                {/* 碳水 */}
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">碳水</p>
+                  <p className="text-sm font-bold text-[#FF9500]">{dailyNutrition.carbs.actual}g</p>
+                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.carbs.target}g</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#FF9500] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.carbs.actual / dailyNutrition.carbs.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                {/* 脂肪 */}
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">脂肪</p>
+                  <p className="text-sm font-bold text-[#FF3B30]">{dailyNutrition.fat.actual}g</p>
+                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.fat.target}g</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#FF3B30] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.fat.actual / dailyNutrition.fat.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                {/* 水分 */}
+                <div className="text-center">
+                  <p className="text-xs text-[#8E8E93] mb-1">水分</p>
+                  <p className="text-sm font-bold text-[#5AC8FA]">{(dailyNutrition.water.actual / 1000).toFixed(1)}L</p>
+                  <p className="text-[10px] text-[#8E8E93]">/ {(dailyNutrition.water.target / 1000).toFixed(1)}L</p>
+                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="h-full bg-[#5AC8FA] rounded-full"
+                      style={{ width: `${Math.min((dailyNutrition.water.actual / dailyNutrition.water.target) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* 无饮食数据时显示引导 */
+              <div className="py-4 text-center">
+                <p className="text-[#8E8E93] text-sm">暂无今日饮食数据，点击生成</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 快捷操作 */}
+        <section className="animate-slide-up" style={{ animationDelay: '100ms' }}>
           <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">快捷操作</h2>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -501,7 +592,7 @@ const Home: React.FC = () => {
         </section>
 
         {/* 最近训练 */}
-        <section className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <section className="animate-slide-up" style={{ animationDelay: '150ms' }}>
           <div className="flex items-center justify-between mb-3 px-1">
             <h2 className="text-lg font-bold text-[#1C1C1E]">最近训练</h2>
             {sessions.length > 0 && (

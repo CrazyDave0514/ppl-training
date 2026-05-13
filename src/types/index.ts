@@ -435,6 +435,33 @@ export interface DailyNutrition {
   carbs: NutritionStat;
   /** 脂肪 */
   fat: NutritionStat;
+  /** 水分（V1.2.3 新增） */
+  water: NutritionStat;
+}
+
+/**
+ * 营养范围值（V1.2.3 新增，用于指标校验）
+ */
+export interface NutritionRange {
+  /** 目标值 */
+  target: number;
+  /** 最小值（下限） */
+  min: number;
+  /** 最大值（上限） */
+  max: number;
+  /** 容差百分比 */
+  tolerance: number;
+}
+
+/**
+ * 每日营养范围（V1.2.3 新增）
+ */
+export interface DailyNutritionRanges {
+  calories: NutritionRange;
+  protein: NutritionRange;
+  carbs: NutritionRange;
+  fat: NutritionRange;
+  water: NutritionRange;
 }
 
 /**

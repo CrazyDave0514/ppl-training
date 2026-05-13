@@ -2,12 +2,13 @@
  * @file DietContext.tsx
  * @description 饮食计划状态管理 Context
  * 管理用户的每日饮食记录、餐食计划和营养摄入追踪
+ * V1.2.3 更新：水分自动生成、指标范围校验
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { DietRecord, MealPlan, DailyNutrition, UserProfile } from '../types';
+import type { DietRecord, MealPlan, DailyNutrition, UserProfile, DailyNutritionRange } from '../types';
 import { getDietRecordsByUser, addDietRecord, updateDietRecord, generateId, getCurrentUser } from '../utils/storage';
-import { generateMealPlan, calculateDailyNutrition } from '../utils/mealPlanGenerator';
+import { generateMealPlan, calculateDailyNutrition, calculateWaterTarget, calculateNutritionRanges } from '../utils/mealPlanGenerator';
 
 /**
  * 饮食计划 Context 类型定义
@@ -31,14 +32,16 @@ interface DietContextType {
   // 营养统计
   dailyNutrition: DailyNutrition;
   
+  // 营养范围（V1.2.3 新增）
+  nutritionRanges: DailyNutritionRange | null;
+  
   // 记录操作
   addFoodToMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodId: string, amount: number) => void;
   removeFoodFromMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodIndex: number) => void;
   updateFoodAmount: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodIndex: number, amount: number) => void;
   
-  // 水分记录
-  waterIntake: number;
-  addWater: (amount: number) => void;
+  // 指标校验（V1.2.3 新增）
+  validateNutritionChange: (newNutrition: DailyNutrition) => { isValid: boolean; exceededMetrics: string[] };
   
   // 加载状态
   isLoading: boolean;
@@ -76,10 +79,11 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     protein: { target: 150, actual: 0, remaining: 150 },
     carbs: { target: 200, actual: 0, remaining: 200 },
     fat: { target: 65, actual: 0, remaining: 65 },
+    water: { target: 2500, actual: 0, remaining: 2500 },
   });
   
-  // 水分摄入
-  const [waterIntake, setWaterIntake] = useState<number>(0);
+  // 营养范围（V1.2.3 新增）
+  const [nutritionRanges, setNutritionRanges] = useState<DailyNutritionRange | null>(null);
   
   // 加载状态
   const [isLoading] = useState<boolean>(false);
@@ -112,7 +116,6 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     
     if (record) {
       setMealPlan(record.mealPlan);
-      setWaterIntake(record.waterIntake || 0);
       setDailyNutrition(record.dailyNutrition);
     } else {
       // 如果没有记录，创建空计划
@@ -122,7 +125,6 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
         dinner: [],
         snack: [],
       });
-      setWaterIntake(0);
       setDailyNutrition(prev => ({
         ...prev,
         date: dateStr,
@@ -130,6 +132,7 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
         protein: { ...prev.protein, actual: 0, remaining: prev.protein.target },
         carbs: { ...prev.carbs, actual: 0, remaining: prev.carbs.target },
         fat: { ...prev.fat, actual: 0, remaining: prev.fat.target },
+        water: { ...prev.water, actual: 0, remaining: prev.water.target },
       }));
     }
   }, [currentDate, dietRecords]);
@@ -144,6 +147,23 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     const newMealPlan = generateMealPlan(profile, trainingTime);
     setMealPlan(newMealPlan);
     
+    // 计算营养统计（包含水分）
+    const nutrition = calculateDailyNutrition(newMealPlan, profile);
+    
+    // 计算水分目标（V1.2.3 自动生成）
+    const waterTarget = calculateWaterTarget(profile, trainingTime);
+    nutrition.water = {
+      target: waterTarget,
+      actual: waterTarget, // 自动生成即达标
+      remaining: 0,
+    };
+    
+    setDailyNutrition(nutrition);
+    
+    // 计算营养范围（V1.2.3 新增）
+    const ranges = calculateNutritionRanges(nutrition);
+    setNutritionRanges(ranges);
+    
     // 保存到记录
     const dateStr = getDateString(currentDate);
     const existingRecord = dietRecords.find(r => r.date === dateStr);
@@ -155,8 +175,8 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
         userId: currentUser.id,
         date: dateStr,
         mealPlan: newMealPlan,
-        dailyNutrition: calculateDailyNutrition(newMealPlan, profile),
-        waterIntake: existingRecord?.waterIntake || 0,
+        dailyNutrition: nutrition,
+        waterIntake: waterTarget, // V1.2.3 水分自动生成
         createdAt: existingRecord?.createdAt || Date.now(),
         updatedAt: Date.now(),
       };
@@ -263,27 +283,40 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
   }, [mealPlan, currentDate, dietRecords, refreshDietRecords]);
 
   /**
-   * 添加水分摄入
+   * 校验营养变化是否在合理范围内（V1.2.3 新增）
    */
-  const addWater = useCallback((amount: number) => {
-    const newWaterIntake = waterIntake + amount;
-    setWaterIntake(newWaterIntake);
-    
-    // 更新记录
-    const dateStr = getDateString(currentDate);
-    const existingRecord = dietRecords.find(r => r.date === dateStr);
-    const currentUser = getCurrentUser();
-    
-    if (existingRecord && currentUser) {
-      const updatedRecord: DietRecord = {
-        ...existingRecord,
-        waterIntake: newWaterIntake,
-        updatedAt: Date.now(),
-      };
-      updateDietRecord(currentUser.id, dateStr, updatedRecord);
-      refreshDietRecords();
+  const validateNutritionChange = useCallback((
+    newNutrition: DailyNutrition
+  ): { isValid: boolean; exceededMetrics: string[] } => {
+    if (!nutritionRanges) {
+      return { isValid: true, exceededMetrics: [] };
     }
-  }, [waterIntake, currentDate, dietRecords, refreshDietRecords]);
+    
+    const exceededMetrics: string[] = [];
+    
+    // 检查各项指标是否超出范围
+    if (newNutrition.calories.actual < nutritionRanges.calories.min || 
+        newNutrition.calories.actual > nutritionRanges.calories.max) {
+      exceededMetrics.push('热量');
+    }
+    if (newNutrition.protein.actual < nutritionRanges.protein.min || 
+        newNutrition.protein.actual > nutritionRanges.protein.max) {
+      exceededMetrics.push('蛋白质');
+    }
+    if (newNutrition.carbs.actual < nutritionRanges.carbs.min || 
+        newNutrition.carbs.actual > nutritionRanges.carbs.max) {
+      exceededMetrics.push('碳水');
+    }
+    if (newNutrition.fat.actual < nutritionRanges.fat.min || 
+        newNutrition.fat.actual > nutritionRanges.fat.max) {
+      exceededMetrics.push('脂肪');
+    }
+    
+    return {
+      isValid: exceededMetrics.length === 0,
+      exceededMetrics,
+    };
+  }, [nutritionRanges]);
 
   const value: DietContextType = {
     currentDate,
@@ -294,11 +327,11 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     mealPlan,
     generateDailyMealPlan,
     dailyNutrition,
+    nutritionRanges,
     addFoodToMeal,
     removeFoodFromMeal,
     updateFoodAmount,
-    waterIntake,
-    addWater,
+    validateNutritionChange,
     isLoading,
   };
 
