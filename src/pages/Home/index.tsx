@@ -472,10 +472,10 @@ const Home: React.FC = () => {
             </div>
           </section>
 
-        {/* 今日饮食模块（V1.2.3 新增） */}
+        {/* 本周饮食概览（V1.2.3 改造为周维度） */}
         <section className="animate-slide-up" style={{ animationDelay: '50ms' }}>
           <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-lg font-bold text-[#1C1C1E]">今日饮食</h2>
+            <h2 className="text-lg font-bold text-[#1C1C1E]">本周饮食</h2>
             <button
               onClick={() => navigate('/plans')}
               className="text-sm text-[#007AFF] font-medium"
@@ -487,74 +487,63 @@ const Home: React.FC = () => {
             onClick={() => navigate('/plans')}
             className="bg-white rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
           >
+            {/* 周维度展示 */}
+            <div className="flex justify-between mb-4">
+              {weekDays.map((wd, index) => {
+                const dayPlans = getPlansForDay(wd.jsDay);
+                const daySessions = getSessionsForDay(wd.jsDay);
+                const isToday = todayJsDay === wd.jsDay;
+                
+                return (
+                  <div 
+                    key={wd.label} 
+                    className={`flex flex-col items-center p-2 rounded-xl ${
+                      isToday ? 'bg-[#007AFF]/10' : ''
+                    }`}
+                  >
+                    <span className={`text-xs ${isToday ? 'text-[#007AFF] font-medium' : 'text-[#8E8E93]'}`}>
+                      {wd.label}
+                    </span>
+                    <span className={`text-sm font-medium ${
+                      dayPlans.length > 0 
+                        ? trainingTypeTextColors[dayPlans[0]?.type] || 'text-[#8E8E93]'
+                        : 'text-[#8E8E93]'
+                    }`}>
+                      {dayPlans.length > 0 
+                        ? dayPlans[0]?.type === 'push' ? '推' 
+                        : dayPlans[0]?.type === 'pull' ? '拉' 
+                        : dayPlans[0]?.type === 'legs' ? '腿' 
+                        : '休'
+                        : '休'}
+                    </span>
+                    {/* 状态指示 */}
+                    <div className="mt-1">
+                      {daySessions.length > 0 ? (
+                        <span className="w-4 h-4 bg-[#34C759] rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      ) : (
+                        <span className="w-4 h-4 border border-[#E5E5EA] rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* 今日饮食简要 */}
             {mealPlan && mealPlan.breakfast.length > 0 ? (
-              /* 有饮食数据时显示五大营养素 */
-              <div className="grid grid-cols-5 gap-2">
-                {/* 热量 */}
-                <div className="text-center">
-                  <p className="text-xs text-[#8E8E93] mb-1">热量</p>
-                  <p className="text-sm font-bold text-[#34C759]">{dailyNutrition.calories.actual}</p>
-                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.calories.target}</p>
-                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
-                    <div 
-                      className="h-full bg-[#34C759] rounded-full"
-                      style={{ width: `${Math.min((dailyNutrition.calories.actual / dailyNutrition.calories.target) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                {/* 蛋白质 */}
-                <div className="text-center">
-                  <p className="text-xs text-[#8E8E93] mb-1">蛋白质</p>
-                  <p className="text-sm font-bold text-[#007AFF]">{dailyNutrition.protein.actual}g</p>
-                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.protein.target}g</p>
-                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
-                    <div 
-                      className="h-full bg-[#007AFF] rounded-full"
-                      style={{ width: `${Math.min((dailyNutrition.protein.actual / dailyNutrition.protein.target) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                {/* 碳水 */}
-                <div className="text-center">
-                  <p className="text-xs text-[#8E8E93] mb-1">碳水</p>
-                  <p className="text-sm font-bold text-[#FF9500]">{dailyNutrition.carbs.actual}g</p>
-                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.carbs.target}g</p>
-                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
-                    <div 
-                      className="h-full bg-[#FF9500] rounded-full"
-                      style={{ width: `${Math.min((dailyNutrition.carbs.actual / dailyNutrition.carbs.target) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                {/* 脂肪 */}
-                <div className="text-center">
-                  <p className="text-xs text-[#8E8E93] mb-1">脂肪</p>
-                  <p className="text-sm font-bold text-[#FF3B30]">{dailyNutrition.fat.actual}g</p>
-                  <p className="text-[10px] text-[#8E8E93]">/ {dailyNutrition.fat.target}g</p>
-                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
-                    <div 
-                      className="h-full bg-[#FF3B30] rounded-full"
-                      style={{ width: `${Math.min((dailyNutrition.fat.actual / dailyNutrition.fat.target) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                {/* 水分 */}
-                <div className="text-center">
-                  <p className="text-xs text-[#8E8E93] mb-1">水分</p>
-                  <p className="text-sm font-bold text-[#5AC8FA]">{(dailyNutrition.water.actual / 1000).toFixed(1)}L</p>
-                  <p className="text-[10px] text-[#8E8E93]">/ {(dailyNutrition.water.target / 1000).toFixed(1)}L</p>
-                  <div className="h-1 bg-[#E5E5EA] rounded-full mt-1.5 overflow-hidden">
-                    <div 
-                      className="h-full bg-[#5AC8FA] rounded-full"
-                      style={{ width: `${Math.min((dailyNutrition.water.actual / dailyNutrition.water.target) * 100, 100)}%` }}
-                    />
-                  </div>
+              <div className="pt-3 border-t border-[#F2F2F7]">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-[#8E8E93]">今日摄入</span>
+                  <span className="text-sm font-bold text-[#34C759]">{dailyNutrition.calories.actual} / {dailyNutrition.calories.target} kcal</span>
                 </div>
               </div>
             ) : (
-              /* 无饮食数据时显示引导 */
-              <div className="py-4 text-center">
-                <p className="text-[#8E8E93] text-sm">暂无今日饮食数据，点击生成</p>
+              <div className="pt-3 border-t border-[#F2F2F7] text-center">
+                <p className="text-sm text-[#8E8E93]">暂无今日饮食数据</p>
               </div>
             )}
           </div>

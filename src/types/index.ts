@@ -480,10 +480,106 @@ export interface DietRecord {
   dailyNutrition: DailyNutrition;
   /** 喝水量 ml */
   waterIntake: number;
+  /** 是否已打卡（V1.2.3 新增） */
+  isChecked: boolean;
   /** 创建时间 */
   createdAt: number;
   /** 更新时间 */
   updatedAt: number;
+}
+
+/**
+ * 单日饮食打卡记录（V1.2.3 新增）
+ */
+export interface DailyDietCheckIn {
+  /** 打卡ID */
+  id: string;
+  /** 关联的饮食记录ID */
+  dietRecordId: string;
+  /** 打卡日期 */
+  date: string;
+  /** 打卡时间 */
+  checkInTime: number;
+  /** 各餐食是否完成 */
+  mealsCompleted: {
+    breakfast: boolean;
+    lunch: boolean;
+    dinner: boolean;
+    snack: boolean;
+  };
+  /** 实际摄入营养（用户可调整） */
+  actualNutrition: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    water: number;
+  };
+  /** 打卡备注 */
+  note?: string;
+}
+
+/**
+ * 周饮食计划（V1.2.3 新增，按周维度组织）
+ */
+export interface WeeklyDietPlan {
+  /** 周计划ID */
+  id: string;
+  /** 所属用户ID */
+  userId: string;
+  /** 周一日期 YYYY-MM-DD */
+  weekStartDate: string;
+  /** 每日饮食计划 */
+  dailyPlans: {
+    [dayOfWeek: number]: DailyDietPlan | null; // 1=周一, 7=周日
+  };
+  /** 创建时间 */
+  createdAt: number;
+  /** 更新时间 */
+  updatedAt: number;
+}
+
+/**
+ * 单日饮食计划（V1.2.3 新增）
+ */
+export interface DailyDietPlan {
+  /** 日期 YYYY-MM-DD */
+  date: string;
+  /** 关联训练类型（用于营养目标计算） */
+  trainingType: TrainingType | 'rest';
+  /** 餐食计划 */
+  meals: MealPlan;
+  /** 计划营养目标 */
+  nutritionTarget: DailyNutritionTarget;
+  /** 是否已生成 */
+  isGenerated: boolean;
+  /** 是否已打卡 */
+  isChecked: boolean;
+  /** 打卡记录 */
+  checkIn?: DailyDietCheckIn;
+}
+
+/**
+ * 周训练+饮食概览（V1.2.3 用于首页本周概览）
+ */
+export interface WeeklyOverview {
+  /** 周一日期 */
+  weekStartDate: string;
+  /** 每日概览 */
+  days: {
+    [dayOfWeek: number]: {
+      /** 星期几 */
+      dayLabel: string;
+      /** 训练类型 */
+      trainingType: TrainingType | null;
+      /** 饮食计划是否生成 */
+      dietGenerated: boolean;
+      /** 饮食计划是否打卡 */
+      dietChecked: boolean;
+      /** 饮食日期字符串 */
+      dietDate: string;
+    };
+  };
 }
 
 /**

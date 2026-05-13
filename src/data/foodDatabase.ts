@@ -1,6 +1,7 @@
 /**
  * 食物数据库
  * @description 内置常见食物营养数据（每100g）
+ * V1.2.3 更新：添加食物图标
  */
 
 export interface FoodDatabaseItem {
@@ -13,7 +14,8 @@ export interface FoodDatabaseItem {
   carbs: number;    // g per 100g
   unit: string;     // 常用计量单位
   defaultAmount: number; // 默认食用量 g
-  icon?: string;    // 表情图标
+  icon: string;     // emoji 图标
+  isCustom?: boolean; // 是否自定义食物（V1.2.3 预留）
 }
 
 export const foodDatabase: FoodDatabaseItem[] = [
@@ -28,6 +30,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🍗',
   },
   {
     id: 'chicken_thigh',
@@ -39,6 +42,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🍗',
   },
   {
     id: 'beef_lean',
@@ -50,6 +54,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🥩',
   },
   {
     id: 'beef_brisket',
@@ -61,6 +66,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: 'g',
     defaultAmount: 100,
+    icon: '🥩',
   },
   {
     id: 'pork_lean',
@@ -72,6 +78,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 1.5,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🥓',
   },
   {
     id: 'egg_whole',
@@ -83,6 +90,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 1.1,
     unit: '个(50g)',
     defaultAmount: 100,
+    icon: '🥚',
   },
   {
     id: 'egg_white',
@@ -94,6 +102,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0.7,
     unit: '个(33g)',
     defaultAmount: 100,
+    icon: '🥚',
   },
   {
     id: 'salmon',
@@ -105,6 +114,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: 'g',
     defaultAmount: 120,
+    icon: '🐟',
   },
   {
     id: 'cod',
@@ -116,6 +126,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🐟',
   },
   {
     id: 'shrimp',
@@ -127,6 +138,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0.2,
     unit: 'g',
     defaultAmount: 100,
+    icon: '🦐',
   },
   {
     id: 'tofu',
@@ -138,6 +150,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 4.2,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🧈',
   },
   {
     id: 'milk',
@@ -149,6 +162,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 3.4,
     unit: 'ml',
     defaultAmount: 250,
+    icon: '🥛',
   },
   {
     id: 'greek_yogurt',
@@ -160,6 +174,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 3.6,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🥛',
   },
   {
     id: 'protein_powder',
@@ -171,6 +186,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 8,
     unit: '勺(30g)',
     defaultAmount: 30,
+    icon: '🥤',
   },
 
   // ==================== 碳水化合物 ====================
@@ -184,6 +200,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 25.6,
     unit: 'g',
     defaultAmount: 200,
+    icon: '🍚',
   },
   {
     id: 'brown_rice',
@@ -195,6 +212,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 25.5,
     unit: 'g',
     defaultAmount: 200,
+    icon: '🍚',
   },
   {
     id: 'noodles',
@@ -206,6 +224,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 25.2,
     unit: 'g',
     defaultAmount: 200,
+    icon: '🍜',
   },
   {
     id: 'oatmeal',
@@ -217,6 +236,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 67.7,
     unit: 'g',
     defaultAmount: 40,
+    icon: '🥣',
   },
   {
     id: 'sweet_potato',
@@ -228,6 +248,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 20.1,
     unit: 'g',
     defaultAmount: 200,
+    icon: '🍠',
   },
   {
     id: 'whole_wheat_bread',
@@ -239,6 +260,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 41,
     unit: '片(35g)',
     defaultAmount: 70,
+    icon: '🍞',
   },
   {
     id: 'white_bread',
@@ -250,6 +272,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 49,
     unit: '片(35g)',
     defaultAmount: 70,
+    icon: '🍞',
   },
   {
     id: 'corn',
@@ -261,6 +284,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 19.6,
     unit: '根(200g)',
     defaultAmount: 200,
+    icon: '🌽',
   },
   {
     id: 'banana',
@@ -272,6 +296,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 20.8,
     unit: '根(120g)',
     defaultAmount: 120,
+    icon: '🍌',
   },
 
   // ==================== 脂肪 ====================
@@ -285,6 +310,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 22,
     unit: 'g',
     defaultAmount: 25,
+    icon: '🥜',
   },
   {
     id: 'walnuts',
@@ -296,6 +322,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 14,
     unit: 'g',
     defaultAmount: 25,
+    icon: '🥜',
   },
   {
     id: 'peanut_butter',
@@ -307,6 +334,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 20,
     unit: '勺(15g)',
     defaultAmount: 15,
+    icon: '🥜',
   },
   {
     id: 'olive_oil',
@@ -318,6 +346,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 0,
     unit: '勺(15ml)',
     defaultAmount: 15,
+    icon: '🫒',
   },
   {
     id: 'avocado',
@@ -329,6 +358,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 8.5,
     unit: '个(150g)',
     defaultAmount: 100,
+    icon: '🥑',
   },
 
   // ==================== 蔬菜 ====================
@@ -342,6 +372,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 7,
     unit: 'g',
     defaultAmount: 150,
+    icon: '🥦',
   },
   {
     id: 'spinach',
@@ -353,6 +384,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 3.6,
     unit: 'g',
     defaultAmount: 100,
+    icon: '🥬',
   },
   {
     id: 'carrot',
@@ -364,6 +396,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 10,
     unit: '根(100g)',
     defaultAmount: 100,
+    icon: '🥕',
   },
   {
     id: 'cucumber',
@@ -375,6 +408,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 3.6,
     unit: '根(200g)',
     defaultAmount: 200,
+    icon: '🥒',
   },
   {
     id: 'tomato',
@@ -386,6 +420,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 3.9,
     unit: '个(150g)',
     defaultAmount: 150,
+    icon: '🍅',
   },
   {
     id: 'lettuce',
@@ -397,6 +432,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 2.9,
     unit: 'g',
     defaultAmount: 80,
+    icon: '🥬',
   },
   {
     id: 'bell_pepper',
@@ -408,6 +444,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 6,
     unit: '个(150g)',
     defaultAmount: 150,
+    icon: '🫑',
   },
   {
     id: 'mushroom',
@@ -419,6 +456,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 3.3,
     unit: 'g',
     defaultAmount: 100,
+    icon: '🍄',
   },
 
   // ==================== 水果 ====================
@@ -432,6 +470,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 14,
     unit: '个(200g)',
     defaultAmount: 200,
+    icon: '🍎',
   },
   {
     id: 'blueberry',
@@ -443,6 +482,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 14.5,
     unit: 'g',
     defaultAmount: 100,
+    icon: '🫐',
   },
   {
     id: 'orange',
@@ -454,6 +494,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 12,
     unit: '个(200g)',
     defaultAmount: 200,
+    icon: '🍊',
   },
   {
     id: 'grape',
@@ -465,6 +506,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 18,
     unit: 'g',
     defaultAmount: 100,
+    icon: '🍇',
   },
   {
     id: 'watermelon',
@@ -476,6 +518,7 @@ export const foodDatabase: FoodDatabaseItem[] = [
     carbs: 7.6,
     unit: 'g',
     defaultAmount: 300,
+    icon: '🍉',
   },
 ];
 
@@ -503,4 +546,13 @@ export const foodCategoryLabels: Record<FoodDatabaseItem['category'], string> = 
   fat: '脂肪',
   vegetable: '蔬菜',
   fruit: '水果',
+};
+
+/** 食物类别图标映射 */
+export const foodCategoryIcons: Record<FoodDatabaseItem['category'], string> = {
+  protein: '🥩',
+  carbs: '🍚',
+  fat: '🥑',
+  vegetable: '🥦',
+  fruit: '🍎',
 };
