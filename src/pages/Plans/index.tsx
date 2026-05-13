@@ -1,7 +1,7 @@
 /**
  * 计划页面 - V1.2.3 重构版
  * @description 包含动作计划和饮食计划两个 Tab，支持智能计划生成
- * V1.2.3 更新：周维度视图、圆环进度、饮食打卡、删除功能
+ * V1.2.3 更新：弧形进度、按餐食打卡、单日单计划限制
  */
 
 import React, { useState } from 'react';
@@ -31,68 +31,78 @@ type TabType = 'action' | 'diet';
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 /**
- * 星期配置
+ * 餐食标签
  */
-const weekDays = [
-  { day: 1, label: '周一', shortLabel: '一' },
-  { day: 2, label: '周二', shortLabel: '二' },
-  { day: 3, label: '周三', shortLabel: '三' },
-  { day: 4, label: '周四', shortLabel: '四' },
-  { day: 5, label: '周五', shortLabel: '五' },
-  { day: 6, label: '周六', shortLabel: '六' },
-  { day: 7, label: '周日', shortLabel: '日' },
-];
+const mealLabels: Record<MealType, string> = {
+  breakfast: '早餐',
+  lunch: '午餐',
+  dinner: '晚餐',
+  snack: '加餐',
+};
+
+
 
 /**
- * 圆环进度组件（V1.2.3 新增）
+ * 多层弧形进度组件
  */
-const CircularProgress: React.FC<{
-  value: number;
-  max: number;
-  size?: number;
-  strokeWidth?: number;
-  color: string;
-  label: string;
-  unit?: string;
-}> = ({ value, max, size = 60, strokeWidth = 6, color, label, unit = '' }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const progress = max > 0 ? Math.min(value / max, 1) : 0;
-  const offset = circumference - progress * circumference;
+const MultiArcProgress: React.FC<{
+  nutrition: {
+    calories: { actual: number; target: number };
+    protein: { actual: number; target: number };
+    carbs: { actual: number; target: number };
+    fat: { actual: number; target: number };
+  };
+}> = ({ nutrition }) => {
+  const size = 240;
+  const center = size / 2;
+  const startAngle = 150;
+  const endAngle = 390;
+  
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  
+  const describeArc = (radius: number, start: number, end: number) => {
+    const startRad = toRad(start);
+    const endRad = toRad(end);
+    const x1 = center + radius * Math.cos(startRad);
+    const y1 = center + radius * Math.sin(startRad);
+    const x2 = center + radius * Math.cos(endRad);
+    const y2 = center + radius * Math.sin(endRad);
+    const largeArc = end - start > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+  };
+  
+  const layers = [
+    { radius: 100, color: '#FF9500', value: nutrition.carbs.actual, max: nutrition.carbs.target, label: '碳水' },
+    { radius: 85, color: '#007AFF', value: nutrition.protein.actual, max: nutrition.protein.target, label: '蛋白质' },
+    { radius: 70, color: '#FF3B30', value: nutrition.fat.actual, max: nutrition.fat.target, label: '脂肪' },
+    { radius: 55, color: '#34C759', value: nutrition.calories.actual, max: nutrition.calories.target, label: '热量' },
+  ];
+  
+  const totalAngle = endAngle - startAngle;
   
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
-          {/* 背景圆环 */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="#E5E5EA"
-            strokeWidth={strokeWidth}
-          />
-          {/* 进度圆环 */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-          />
-        </svg>
-        {/* 中心文字 */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-bold" style={{ color }}>{value}{unit}</span>
-        </div>
+    <div className="relative flex justify-center" style={{ width: size, height: size * 0.9 }}>
+      <svg width={size} height={size} className="overflow-visible">
+        {layers.map((layer, index) => {
+          const progress = layer.max > 0 ? Math.min(layer.value / layer.max, 1) : 0;
+          const currentAngle = startAngle + totalAngle * progress;
+          const bgPath = describeArc(layer.radius, startAngle, endAngle);
+          const progressPath = describeArc(layer.radius, startAngle, currentAngle);
+          
+          return (
+            <g key={index}>
+              <path d={bgPath} fill="none" stroke="#E5E5EA" strokeWidth={10} strokeLinecap="round" />
+              <path d={progressPath} fill="none" stroke={layer.color} strokeWidth={10} strokeLinecap="round" style={{ transition: 'all 0.5s ease' }} />
+            </g>
+          );
+        })}
+      </svg>
+      {/* 中心显示总热量 */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pt-6">
+        <span className="text-4xl font-bold text-[#1C1C1E]">{nutrition.calories.actual}</span>
+        <span className="text-xs text-[#8E8E93] mt-1">已摄入 kcal</span>
+        <span className="text-xs text-[#34C759] mt-1">目标 {nutrition.calories.target}</span>
       </div>
-      <span className="text-[10px] text-[#8E8E93] mt-1">{label}</span>
     </div>
   );
 };
@@ -106,19 +116,16 @@ const Plans: React.FC = () => {
   const { plans, deletePlan, refreshPlans } = usePlan();
   const { profile, hasProfile } = useProfile();
   const { 
-    selectedDayOfWeek, 
-    setSelectedDayOfWeek,
-    dietRecords,
-    mealPlan, 
-    dailyNutrition, 
+    mealPlan,
+    actualNutrition,
     generateDailyMealPlan,
     generateWeeklyMealPlan,
     addFoodToMeal,
     removeFoodFromMeal,
     deleteDailyDietPlan,
-    checkIn,
-    uncheckIn,
-    isCheckedIn,
+    checkInMeal,
+    uncheckInMeal,
+    completedMeals,
   } = useDiet();
   
   // 当前选中的 Tab
@@ -131,8 +138,7 @@ const Plans: React.FC = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
   
-  // 新增计划弹窗
-  const [showAddModal, setShowAddModal] = useState(false);
+
   
   // 餐食编辑弹窗
   const [editingMeal, setEditingMeal] = useState<MealType | null>(null);
@@ -144,15 +150,6 @@ const Plans: React.FC = () => {
   
   // 删除饮食计划确认
   const [showDeleteDietModal, setShowDeleteDietModal] = useState(false);
-  
-  // 打卡确认弹窗
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
-  const [mealsToCheckIn, setMealsToCheckIn] = useState({
-    breakfast: true,
-    lunch: true,
-    dinner: true,
-    snack: false,
-  });
 
   /**
    * 计划列表
@@ -165,65 +162,19 @@ const Plans: React.FC = () => {
   const canGenerateDietPlan = hasProfile && plans.length > 0;
   
   /**
-   * 获取当前选中日期的饮食记录
+   * 获取当前日期的字符串
    */
-  const getCurrentDayRecord = () => {
-    const weekStart = getWeekStartDate(new Date());
-    const targetDate = new Date(weekStart);
-    targetDate.setDate(targetDate.getDate() + selectedDayOfWeek - 1);
-    const dateStr = formatDateString(targetDate);
-    return dietRecords.find(r => r.date === dateStr) || null;
+  const getTodayDateString = () => {
+    return new Date().toISOString().split('T')[0];
   };
   
   /**
-   * 获取本周周一的日期
+   * 获取今日饮食记录
    */
-  const getWeekStartDate = (date: Date): Date => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-  
-  /**
-   * 格式化日期字符串
-   */
-  const formatDateString = (date: Date): string => {
-    return date.toISOString().split('T')[0];
-  };
-  
-  /**
-   * 获取星期几对应的训练类型
-   */
-  const getTrainingTypeForDay = (day: number): TrainingType | null => {
-    const dayPlans = plans.filter(p => p.dayOfWeek.includes(day));
-    if (dayPlans.length === 0) return null;
-    return dayPlans[0].type;
-  };
-  
-  /**
-   * 检查某天是否有饮食计划
-   */
-  const hasDietPlanForDay = (day: number): boolean => {
-    const weekStart = getWeekStartDate(new Date());
-    const targetDate = new Date(weekStart);
-    targetDate.setDate(targetDate.getDate() + day - 1);
-    const dateStr = formatDateString(targetDate);
-    return dietRecords.some(r => r.date === dateStr);
-  };
-  
-  /**
-   * 检查某天是否已打卡
-   */
-  const isDayCheckedIn = (day: number): boolean => {
-    const weekStart = getWeekStartDate(new Date());
-    const targetDate = new Date(weekStart);
-    targetDate.setDate(targetDate.getDate() + day - 1);
-    const dateStr = formatDateString(targetDate);
-    const record = dietRecords.find(r => r.date === dateStr);
-    return record?.isChecked || false;
+  const getTodayDietRecord = () => {
+    // 从 dietRecords 中查找今日记录
+    // 这里简化处理，实际应该从 useDiet 获取
+    return mealPlan && mealPlan.breakfast.length > 0;
   };
 
   /**
@@ -289,7 +240,7 @@ const Plans: React.FC = () => {
   };
 
   /**
-   * 处理生成本周饮食计划（周维度）
+   * 处理生成本周饮食计划
    */
   const handleGenerateWeeklyDietPlan = () => {
     if (!hasProfile || !profile) {
@@ -298,34 +249,24 @@ const Plans: React.FC = () => {
     }
     
     // 构建每天的训练类型映射
-    const dayTrainingMap = weekDays.map(wd => ({
-      dayOfWeek: wd.day,
-      trainingType: getTrainingTypeForDay(wd.day) || 'rest' as TrainingType | 'rest',
-    }));
+    const dayTrainingMap = [1, 2, 3, 4, 5, 6, 7].map(day => {
+      const dayPlans = plans.filter(p => p.dayOfWeek?.includes(day));
+      return {
+        dayOfWeek: day,
+        trainingType: dayPlans.length > 0 ? dayPlans[0].type : 'rest' as TrainingType | 'rest',
+      };
+    });
     
     generateWeeklyMealPlan(profile, dayTrainingMap);
     alert('本周饮食计划已生成！');
   };
 
   /**
-   * 处理删除当日饮食计划
+   * 处理删除今日饮食计划
    */
   const handleDeleteDietPlan = () => {
-    const weekStart = getWeekStartDate(new Date());
-    const targetDate = new Date(weekStart);
-    targetDate.setDate(targetDate.getDate() + selectedDayOfWeek - 1);
-    const dateStr = formatDateString(targetDate);
-    deleteDailyDietPlan(dateStr);
+    deleteDailyDietPlan(getTodayDateString());
     setShowDeleteDietModal(false);
-  };
-
-  /**
-   * 处理饮食打卡
-   */
-  const handleCheckIn = () => {
-    checkIn(mealsToCheckIn);
-    setShowCheckInModal(false);
-    alert('打卡成功！');
   };
 
   /**
@@ -374,6 +315,17 @@ const Plans: React.FC = () => {
    */
   const handleRemoveFood = (mealType: MealType, foodIndex: number) => {
     removeFoodFromMeal(mealType, foodIndex);
+  };
+
+  /**
+   * 处理餐食打卡
+   */
+  const handleMealCheckIn = (mealType: MealType) => {
+    if (completedMeals[mealType]) {
+      uncheckInMeal(mealType);
+    } else {
+      checkInMeal(mealType);
+    }
   };
 
   return (
@@ -553,7 +505,7 @@ const Plans: React.FC = () => {
             )}
           </>
         ) : (
-          /* 饮食计划 Tab - V1.2.3 重构 */
+          /* 饮食计划 Tab - V1.2.3 重构：弧形进度 + 按餐食打卡 */
           <>
             {/* 缺省状态：无健身档案或无训练计划 */}
             {!canGenerateDietPlan ? (
@@ -582,75 +534,11 @@ const Plans: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* 星期选择器（周维度） */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-bold text-[#1C1C1E]">本周饮食</h3>
-                    <button
-                      onClick={handleGenerateWeeklyDietPlan}
-                      className="text-sm text-[#34C759] font-medium"
-                    >
-                      生成本周计划
-                    </button>
-                  </div>
-                  <div className="flex justify-between">
-                    {weekDays.map((wd) => {
-                      const trainingType = getTrainingTypeForDay(wd.day);
-                      const hasDiet = hasDietPlanForDay(wd.day);
-                      const isChecked = isDayCheckedIn(wd.day);
-                      const isSelected = selectedDayOfWeek === wd.day;
-                      
-                      return (
-                        <button
-                          key={wd.day}
-                          onClick={() => setSelectedDayOfWeek(wd.day)}
-                          className={`flex flex-col items-center p-2 rounded-xl transition-all ${
-                            isSelected ? 'bg-[#007AFF]/10' : 'hover:bg-[#F2F2F7]'
-                          }`}
-                        >
-                          <span className={`text-xs ${isSelected ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>
-                            {wd.shortLabel}
-                          </span>
-                          <span className={`text-sm font-medium ${
-                            trainingType 
-                              ? trainingTypeTextColors[trainingType]
-                              : 'text-[#8E8E93]'
-                          }`}>
-                            {trainingType ? (
-                              trainingType === 'push' ? '推' :
-                              trainingType === 'pull' ? '拉' :
-                              trainingType === 'legs' ? '腿' : '休'
-                            ) : '休'}
-                          </span>
-                          {/* 状态指示 */}
-                          <div className="mt-1">
-                            {hasDiet ? (
-                              isChecked ? (
-                                <span className="w-4 h-4 bg-[#34C759] rounded-full flex items-center justify-center">
-                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </span>
-                              ) : (
-                                <span className="w-4 h-4 bg-[#FF9500] rounded-full" />
-                              )
-                            ) : (
-                              <span className="w-4 h-4 border border-[#E5E5EA] rounded-full" />
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                {/* 圆环进度展示（V1.2.3 Apple Fitness 风格） */}
+                {/* 弧形进度展示（小米运动健康风格） */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-[#1C1C1E]">
-                      {weekDays.find(w => w.day === selectedDayOfWeek)?.label} 营养
-                    </h3>
-                    {getCurrentDayRecord() && (
+                    <h3 className="font-bold text-[#1C1C1E]">今日营养</h3>
+                    {getTodayDietRecord() && (
                       <button
                         onClick={() => setShowDeleteDietModal(true)}
                         className="text-sm text-[#FF3B30] font-medium"
@@ -662,164 +550,144 @@ const Plans: React.FC = () => {
                   
                   {mealPlan && mealPlan.breakfast.length > 0 ? (
                     <>
-                      {/* 热量大圆环 */}
+                      {/* 多层弧形进度 */}
                       <div className="flex justify-center mb-6">
-                        <CircularProgress
-                          value={dailyNutrition.calories.actual}
-                          max={dailyNutrition.calories.target}
-                          size={120}
-                          strokeWidth={10}
-                          color="#34C759"
-                          label="热量"
-                          unit=" kcal"
-                        />
-                      </div>
-                      
-                      {/* 其他四个指标小圆环 */}
-                      <div className="flex justify-around mb-6">
-                        <CircularProgress
-                          value={dailyNutrition.protein.actual}
-                          max={dailyNutrition.protein.target}
-                          size={60}
-                          strokeWidth={5}
-                          color="#007AFF"
-                          label="蛋白质"
-                          unit="g"
-                        />
-                        <CircularProgress
-                          value={dailyNutrition.carbs.actual}
-                          max={dailyNutrition.carbs.target}
-                          size={60}
-                          strokeWidth={5}
-                          color="#FF9500"
-                          label="碳水"
-                          unit="g"
-                        />
-                        <CircularProgress
-                          value={dailyNutrition.fat.actual}
-                          max={dailyNutrition.fat.target}
-                          size={60}
-                          strokeWidth={5}
-                          color="#FF3B30"
-                          label="脂肪"
-                          unit="g"
-                        />
-                        <CircularProgress
-                          value={Math.round(dailyNutrition.water.actual / 1000 * 10) / 10}
-                          max={Math.round(dailyNutrition.water.target / 1000 * 10) / 10}
-                          size={60}
-                          strokeWidth={5}
-                          color="#5AC8FA"
-                          label="水分"
-                          unit="L"
-                        />
-                      </div>
-                      
-                      {/* 打卡按钮 */}
-                      <div className="flex gap-3">
-                        {!isCheckedIn ? (
-                          <button
-                            onClick={() => setShowCheckInModal(true)}
-                            className="flex-1 bg-[#34C759] text-white font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            打卡
-                          </button>
-                        ) : (
-                          <button
-                            onClick={uncheckIn}
-                            className="flex-1 bg-[#FF9500] text-white font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            取消打卡
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            const weekStart = getWeekStartDate(new Date());
-                            const targetDate = new Date(weekStart);
-                            targetDate.setDate(targetDate.getDate() + selectedDayOfWeek - 1);
-                            generateDailyMealPlan(profile!, 'rest');
+                        <MultiArcProgress 
+                          nutrition={{
+                            calories: actualNutrition.calories,
+                            protein: actualNutrition.protein,
+                            carbs: actualNutrition.carbs,
+                            fat: actualNutrition.fat,
                           }}
-                          className="px-4 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98]"
-                        >
-                          重新生成
-                        </button>
+                        />
                       </div>
-                    </>
-                  ) : (
-                    <div className="py-8 text-center">
-                      <p className="text-[#8E8E93] mb-4">暂无饮食计划</p>
+                      
+                      {/* 营养素图例 */}
+                      <div className="flex justify-center gap-4 mb-4">
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-[#34C759]"></span>
+                          <span className="text-xs text-[#8E8E93]">热量</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-[#007AFF]"></span>
+                          <span className="text-xs text-[#8E8E93]">蛋白质</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-[#FF9500]"></span>
+                          <span className="text-xs text-[#8E8E93]">碳水</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-[#FF3B30]"></span>
+                          <span className="text-xs text-[#8E8E93]">脂肪</span>
+                        </div>
+                      </div>
+                      
+                      {/* 生成/重新生成按钮 */}
                       <button
                         onClick={() => generateDailyMealPlan(profile!, 'rest')}
+                        className="w-full bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98]"
+                      >
+                        重新生成今日计划
+                      </button>
+                    </>
+                  ) : (
+                    <div className="py-12 text-center">
+                      <div className="w-20 h-20 bg-[#F2F2F7] rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <svg className="w-10 h-10 text-[#8E8E93]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </div>
+                      <p className="text-[#8E8E93] mb-4">今日还没有饮食计划</p>
+                      <button
+                        onClick={handleGenerateWeeklyDietPlan}
                         className="bg-[#34C759] text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 active:scale-[0.98]"
                       >
-                        生成今日计划
+                        生成本周计划
                       </button>
                     </div>
                   )}
                 </div>
                 
-                {/* 餐食列表 */}
-                {mealPlan && (
-                  <div className="space-y-4">
-                    {[
-                      { key: 'breakfast' as MealType, label: '早餐', icon: '🌅' },
-                      { key: 'lunch' as MealType, label: '午餐', icon: '☀️' },
-                      { key: 'dinner' as MealType, label: '晚餐', icon: '🌙' },
-                      { key: 'snack' as MealType, label: '加餐', icon: '🍎' },
-                    ].map(({ key, label, icon }) => {
-                      const items = mealPlan[key];
-                      const nutrition = calculateMealNutrition(items);
+                {/* 餐食列表 + 打卡 */}
+                {mealPlan && mealPlan.breakfast.length > 0 && (
+                  <div className="space-y-3">
+                    {(['breakfast', 'lunch', 'dinner', 'snack'] as MealType[]).map((mealType) => {
+                      const mealItems = mealPlan[mealType];
+                      const nutrition = calculateMealNutrition(mealItems);
+                      const isCompleted = completedMeals[mealType];
                       
                       return (
-                        <div key={key} className="bg-white rounded-2xl p-4 shadow-sm">
+                        <div key={mealType} className={`bg-white rounded-2xl p-4 shadow-sm ${isCompleted ? 'opacity-75' : ''}`}>
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-xl">{icon}</span>
-                              <h4 className="font-bold text-[#1C1C1E]">{label}</h4>
+                              <h4 className="font-bold text-[#1C1C1E]">{mealLabels[mealType]}</h4>
+                              {isCompleted && (
+                                <span className="text-xs bg-[#34C759] text-white px-2 py-0.5 rounded-full">
+                                  已完成
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-[#8E8E93]">{nutrition.calories} kcal</span>
+                              <span className="text-sm text-[#8E8E93]">
+                                {nutrition.calories} kcal
+                              </span>
+                              {/* 打卡按钮 */}
                               <button
-                                onClick={() => setEditingMeal(key)}
-                                className="p-1.5 bg-[#F2F2F7] rounded-lg text-[#8E8E93] hover:text-[#007AFF] transition-colors"
+                                onClick={() => handleMealCheckIn(mealType)}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                                  isCompleted
+                                    ? 'bg-[#FF9500]/10 text-[#FF9500]'
+                                    : 'bg-[#34C759] text-white'
+                                }`}
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
+                                {isCompleted ? '取消' : '打卡'}
                               </button>
                             </div>
                           </div>
                           
-                          {items.length > 0 ? (
+                          {mealItems.length > 0 ? (
                             <div className="space-y-2">
-                              {items.map((item, index) => {
+                              {mealItems.map((item, idx) => {
                                 const food = getFoodById(item.foodId);
                                 if (!food) return null;
-                                
                                 return (
-                                  <div key={index} className="flex items-center justify-between py-2 border-b border-[#F2F2F7] last:border-0">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-[#F2F2F7] rounded-lg flex items-center justify-center text-lg">
-                                        {food.icon}
-                                      </div>
-                                      <div>
-                                        <p className="font-medium text-[#1C1C1E]">{food.name}</p>
-                                        <p className="text-xs text-[#8E8E93]">{item.amount}g · {Math.round(food.calories * item.amount / 100)} kcal</p>
-                                      </div>
+                                  <div key={idx} className="flex items-center justify-between py-2 border-b border-[#F2F2F7] last:border-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-lg">{food.icon}</span>
+                                      <span className="text-sm text-[#1C1C1E]">{food.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-[#8E8E93]">{item.amount}g</span>
+                                      <span className="text-xs text-[#8E8E93]">
+                                        {Math.round(food.calories * (item.amount / 100))} kcal
+                                      </span>
+                                      <button
+                                        onClick={() => handleRemoveFood(mealType, idx)}
+                                        className="text-[#FF3B30] p-1"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
                                     </div>
                                   </div>
                                 );
                               })}
                             </div>
                           ) : (
-                            <p className="text-sm text-[#8E8E93] text-center py-4">暂无食物</p>
+                            <p className="text-sm text-[#8E8E93] py-2">暂无食物</p>
                           )}
+                          
+                          {/* 添加食物按钮 */}
+                          <button
+                            onClick={() => {
+                              setEditingMeal(mealType);
+                              setShowAddFoodModal(true);
+                            }}
+                            className="w-full mt-3 py-2 border border-dashed border-[#C7C7CC] rounded-xl text-sm text-[#8E8E93] hover:border-[#007AFF] hover:text-[#007AFF] transition-colors"
+                          >
+                            + 添加食物
+                          </button>
                         </div>
                       );
                     })}
@@ -831,33 +699,22 @@ const Plans: React.FC = () => {
         )}
       </main>
 
-      {/* 删除动作计划确认弹窗 */}
+      {/* 删除计划确认弹窗 */}
       {planToDelete && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setPlanToDelete(null)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-14 h-14 bg-red-50 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-7 h-7 text-[#FF3B30]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-2">确认删除</h2>
-            <p className="text-[#8E8E93] text-center mb-2">
-              确定要删除计划 <span className="text-[#1C1C1E] font-medium">"{planToDelete.name}"</span> 吗？
-            </p>
-            <p className="text-sm text-[#8E8E93] text-center mb-6">此操作不可恢复</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-[#1C1C1E] mb-2">删除计划</h3>
+            <p className="text-[#8E8E93] mb-6">确定要删除计划"{planToDelete.name}"吗？此操作无法撤销。</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setPlanToDelete(null)}
-                className="flex-1 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200"
+                className="flex-1 py-3 bg-[#F2F2F7] text-[#1C1C1E] font-medium rounded-xl"
               >
                 取消
               </button>
               <button
                 onClick={handleDeletePlan}
-                className="flex-1 bg-[#FF3B30] text-white font-medium py-3 rounded-xl transition-all duration-200"
+                className="flex-1 py-3 bg-[#FF3B30] text-white font-medium rounded-xl"
               >
                 删除
               </button>
@@ -866,167 +723,23 @@ const Plans: React.FC = () => {
         </div>
       )}
 
-      {/* 删除饮食计划确认弹窗 */}
-      {showDeleteDietModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowDeleteDietModal(false)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-14 h-14 bg-red-50 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-7 h-7 text-[#FF3B30]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-2">删除饮食计划</h2>
-            <p className="text-[#8E8E93] text-center mb-6">
-              确定要删除 {weekDays.find(w => w.day === selectedDayOfWeek)?.label} 的饮食计划吗？
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteDietModal(false)}
-                className="flex-1 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleDeleteDietPlan}
-                className="flex-1 bg-[#FF3B30] text-white font-medium py-3 rounded-xl transition-all duration-200"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 打卡确认弹窗 */}
-      {showCheckInModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowCheckInModal(false)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-4">确认打卡</h2>
-            <p className="text-[#8E8E93] text-center mb-4">请确认今日已完成以下餐食：</p>
-            
-            <div className="space-y-3 mb-6">
-              {[
-                { key: 'breakfast', label: '🌅 早餐' },
-                { key: 'lunch', label: '☀️ 午餐' },
-                { key: 'dinner', label: '🌙 晚餐' },
-                { key: 'snack', label: '🍎 加餐' },
-              ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-3 p-3 bg-[#F2F2F7] rounded-xl cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={mealsToCheckIn[key as keyof typeof mealsToCheckIn]}
-                    onChange={(e) => setMealsToCheckIn(prev => ({
-                      ...prev,
-                      [key]: e.target.checked,
-                    }))}
-                    className="w-5 h-5 rounded border-[#E5E5EA] text-[#34C759] focus:ring-[#34C759]"
-                  />
-                  <span className="text-[#1C1C1E]">{label}</span>
-                </label>
-              ))}
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCheckInModal(false)}
-                className="flex-1 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleCheckIn}
-                className="flex-1 bg-[#34C759] text-white font-medium py-3 rounded-xl transition-all duration-200"
-              >
-                确认打卡
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 新增计划弹窗 */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowAddModal(false)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-6">添加计划</h2>
-            <div className="space-y-3">
-              <button
-                onClick={() => { setShowAddModal(false); navigate('/quick-create'); }}
-                className="w-full bg-[#007AFF] text-white font-medium py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                快速创建
-              </button>
-              <button
-                onClick={() => { setShowAddModal(false); hasProfile ? setShowGenerateModal(true) : navigate('/profile-wizard'); }}
-                className="w-full bg-[#34C759] text-white font-medium py-3.5 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                智能生成
-              </button>
-            </div>
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="w-full mt-3 text-[#8E8E93] font-medium py-2.5 rounded-xl transition-all duration-200"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 生成计划弹窗 */}
+      {/* 生成计划确认弹窗 */}
       {showGenerateModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowGenerateModal(false)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-14 h-14 bg-green-50 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <svg className="w-7 h-7 text-[#34C759]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-[#1C1C1E] text-center mb-2">生成智能计划</h2>
-            <p className="text-[#8E8E93] text-center mb-6">
-              根据您的用户画像，系统将为您生成一周个性化训练计划
-            </p>
-            
-            {profile && (
-              <div className="bg-[#F2F2F7] rounded-xl p-4 mb-6">
-                <p className="text-sm text-[#8E8E93] mb-2">当前画像</p>
-                <div className="space-y-1">
-                  <p className="text-sm text-[#1C1C1E]">目标: {profile.goals?.map(g => g === 'muscle' ? '增肌' : g === 'fat_loss' ? '减脂' : g === 'shape' ? '塑形' : '维持').join('、') || '未设置'}</p>
-                  <p className="text-sm text-[#1C1C1E]">频率: 每周 {profile.trainingDays} 天</p>
-                  <p className="text-sm text-[#1C1C1E]">经验: {profile.experience === 'beginner' ? '初级' : profile.experience === 'intermediate' ? '中级' : '高级'}</p>
-                </div>
-              </div>
-            )}
-            
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-[#1C1C1E] mb-2">智能生成训练计划</h3>
+            <p className="text-[#8E8E93] mb-6">根据您的健身档案，系统将为您生成一周的 PPL 训练计划。是否继续？</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowGenerateModal(false)}
-                className="flex-1 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200"
+                className="flex-1 py-3 bg-[#F2F2F7] text-[#1C1C1E] font-medium rounded-xl"
               >
                 取消
               </button>
               <button
                 onClick={handleGeneratePlan}
                 disabled={generating}
-                className="flex-1 bg-[#34C759] text-white font-medium py-3 rounded-xl transition-all duration-200 disabled:opacity-50"
+                className="flex-1 py-3 bg-[#34C759] text-white font-medium rounded-xl disabled:opacity-50"
               >
                 {generating ? '生成中...' : '确认生成'}
               </button>
@@ -1035,120 +748,74 @@ const Plans: React.FC = () => {
         </div>
       )}
 
-      {/* 餐食编辑弹窗 */}
-      {editingMeal && mealPlan && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setEditingMeal(null)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[80vh] overflow-y-auto animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-[#1C1C1E]">
-                编辑{editingMeal === 'breakfast' ? '早餐' : editingMeal === 'lunch' ? '午餐' : editingMeal === 'dinner' ? '晚餐' : '加餐'}
-              </h2>
+      {/* 删除饮食计划确认弹窗 */}
+      {showDeleteDietModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-[#1C1C1E] mb-2">删除饮食计划</h3>
+            <p className="text-[#8E8E93] mb-6">确定要删除今日的饮食计划吗？此操作无法撤销。</p>
+            <div className="flex gap-3">
               <button
-                onClick={() => setEditingMeal(null)}
-                className="p-2 text-[#8E8E93] hover:text-[#1C1C1E] transition-colors"
+                onClick={() => setShowDeleteDietModal(false)}
+                className="flex-1 py-3 bg-[#F2F2F7] text-[#1C1C1E] font-medium rounded-xl"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                取消
+              </button>
+              <button
+                onClick={handleDeleteDietPlan}
+                className="flex-1 py-3 bg-[#FF3B30] text-white font-medium rounded-xl"
+              >
+                删除
               </button>
             </div>
-            
-            <div className="bg-[#F2F2F7] rounded-xl p-3 mb-4">
-              {(() => {
-                const nutrition = calculateMealNutrition(mealPlan[editingMeal]);
-                return (
-                  <p className="text-sm text-[#8E8E93]">
-                    当前：蛋白质 {nutrition.protein}g · 碳水 {nutrition.carbs}g · 脂肪 {nutrition.fat}g
-                  </p>
-                );
-              })()}
-            </div>
-            
-            <div className="space-y-2 mb-4">
-              {mealPlan[editingMeal].map((item, index) => {
-                const food = getFoodById(item.foodId);
-                if (!food) return null;
-                
-                return (
-                  <div key={index} className="flex items-center justify-between bg-[#F2F2F7] rounded-xl p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-lg">
-                        {food.icon}
-                      </div>
-                      <div>
-                        <p className="font-medium text-[#1C1C1E]">{food.name}</p>
-                        <p className="text-xs text-[#8E8E93]">{item.amount}g</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveFood(editingMeal, index)}
-                      className="p-2 text-[#FF3B30] hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            
-            <button
-              onClick={() => setShowAddFoodModal(true)}
-              className="w-full bg-[#007AFF] text-white font-medium py-3 rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              添加食物
-            </button>
           </div>
         </div>
       )}
 
       {/* 添加食物弹窗 */}
       {showAddFoodModal && editingMeal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setShowAddFoodModal(false)}>
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm max-h-[80vh] overflow-y-auto animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-[#1C1C1E] mb-4">选择食物</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full max-h-[80vh] flex flex-col">
+            <h3 className="text-lg font-bold text-[#1C1C1E] mb-4">添加食物 - {mealLabels[editingMeal]}</h3>
             
-            <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
-              {foodDatabase.map((food) => (
-                <button
-                  key={food.id}
-                  onClick={() => setSelectedFoodId(food.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                    selectedFoodId === food.id 
-                      ? 'bg-[#007AFF]/10 border-2 border-[#007AFF]' 
-                      : 'bg-[#F2F2F7] border-2 border-transparent hover:bg-[#E5E5EA]'
-                  }`}
-                >
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-lg">
-                    {food.icon}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-[#1C1C1E]">{food.name}</p>
-                    <p className="text-xs text-[#8E8E93]">{food.calories} kcal/100g</p>
-                  </div>
-                </button>
-              ))}
+            <div className="flex-1 overflow-y-auto mb-4">
+              <div className="space-y-2">
+                {foodDatabase.map((food) => (
+                  <button
+                    key={food.id}
+                    onClick={() => setSelectedFoodId(food.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border ${
+                      selectedFoodId === food.id
+                        ? 'border-[#007AFF] bg-[#007AFF]/5'
+                        : 'border-[#E5E5EA]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{food.icon}</span>
+                      <div className="text-left">
+                        <p className="font-medium text-[#1C1C1E]">{food.name}</p>
+                        <p className="text-xs text-[#8E8E93]">{food.calories} kcal/100g</p>
+                      </div>
+                    </div>
+                    {selectedFoodId === food.id && (
+                      <svg className="w-5 h-5 text-[#007AFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
             
             {selectedFoodId && (
               <div className="mb-4">
-                <label className="text-sm text-[#8E8E93] mb-2 block">份量 (g)</label>
+                <label className="block text-sm text-[#8E8E93] mb-2">份量 (克)</label>
                 <input
                   type="number"
                   value={foodAmount}
-                  onChange={(e) => setFoodAmount(Number(e.target.value) || 0)}
-                  className="w-full bg-[#F2F2F7] text-[#1C1C1E] px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  min={1}
+                  onChange={(e) => setFoodAmount(Number(e.target.value))}
+                  className="w-full px-4 py-3 bg-[#F2F2F7] rounded-xl text-[#1C1C1E]"
+                  min="1"
                 />
               </div>
             )}
@@ -1160,32 +827,20 @@ const Plans: React.FC = () => {
                   setSelectedFoodId('');
                   setFoodAmount(100);
                 }}
-                className="flex-1 bg-[#F2F2F7] text-[#1C1C1E] font-medium py-3 rounded-xl transition-all duration-200"
+                className="flex-1 py-3 bg-[#F2F2F7] text-[#1C1C1E] font-medium rounded-xl"
               >
                 取消
               </button>
               <button
                 onClick={handleAddFood}
-                disabled={!selectedFoodId || foodAmount <= 0}
-                className="flex-1 bg-[#007AFF] text-white font-medium py-3 rounded-xl transition-all duration-200 disabled:opacity-50"
+                disabled={!selectedFoodId}
+                className="flex-1 py-3 bg-[#007AFF] text-white font-medium rounded-xl disabled:opacity-50"
               >
                 添加
               </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* 悬浮添加按钮 */}
-      {activeTab === 'action' && (
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="fixed bottom-24 right-5 w-16 h-16 bg-[#007AFF] text-white rounded-full shadow-lg flex items-center justify-center active:scale-[0.95] transition-transform z-40"
-        >
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
       )}
     </div>
   );

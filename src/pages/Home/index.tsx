@@ -1,7 +1,7 @@
 /**
- * 首页组件
- * @description Apple Health 风格首页，用户切换、今日状态、历史列表
- * V1.2.3 更新：新增今日饮食模块
+ * 首页组件 - V1.2.3 重构版
+ * @description Apple Health 风格首页，今日概览模块（训练+饮食合并）
+ * V1.2.3 更新：合并今日概览、按餐食打卡、弧形进度
  */
 
 import React, { useState, useEffect } from 'react';
@@ -9,13 +9,64 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../store/UserContext';
 import { usePlan } from '../../store/PlanContext';
 import { useDiet } from '../../store/DietContext';
-import type { TrainingSession, TrainingPlan } from '../../types';
+import type { TrainingSession } from '../../types';
 import { getSessionsByUser } from '../../utils/storage';
 import {
   trainingTypeLabels,
   trainingTypeIconColors,
   trainingTypeTextColors,
 } from '../../data/planTemplates';
+import { foodDatabase } from '../../data/foodDatabase';
+
+/**
+ * 弧形进度组件
+ */
+const ArcProgress: React.FC<{
+  value: number;
+  max: number;
+  size?: number;
+  strokeWidth?: number;
+  color: string;
+  label: string;
+}> = ({ value, max, size = 120, strokeWidth = 8, color, label }) => {
+  const radius = (size - strokeWidth) / 2;
+  const center = size / 2;
+  const startAngle = 135;
+  const endAngle = 405;
+  const totalAngle = endAngle - startAngle;
+  
+  const progress = max > 0 ? Math.min(value / max, 1) : 0;
+  const currentAngle = startAngle + totalAngle * progress;
+  
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  
+  const describeArc = (start: number, end: number) => {
+    const startRad = toRad(start);
+    const endRad = toRad(end);
+    const x1 = center + radius * Math.cos(startRad);
+    const y1 = center + radius * Math.sin(startRad);
+    const x2 = center + radius * Math.cos(endRad);
+    const y2 = center + radius * Math.sin(endRad);
+    const largeArc = end - start > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+  };
+  
+  const bgPath = describeArc(startAngle, endAngle);
+  const progressPath = describeArc(startAngle, currentAngle);
+  
+  return (
+    <div className="relative" style={{ width: size, height: size * 0.75 }}>
+      <svg width={size} height={size} className="overflow-visible">
+        <path d={bgPath} fill="none" stroke="#E5E5EA" strokeWidth={strokeWidth} strokeLinecap="round" />
+        <path d={progressPath} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" style={{ transition: 'all 0.5s ease' }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
+        <span className="text-xl font-bold text-[#1C1C1E]">{value}</span>
+        <span className="text-[10px] text-[#8E8E93]">{label}</span>
+      </div>
+    </div>
+  );
+};
 
 /**
  * 首页组件
@@ -27,11 +78,17 @@ const Home: React.FC = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { plans } = usePlan();
-  const { dailyNutrition, mealPlan } = useDiet();
+  const { 
+    dailyNutrition, 
+    actualNutrition,
+    mealPlan,
+    completedMeals,
+    checkInMeal,
+    uncheckInMeal,
+    getCurrentMealType,
+  } = useDiet();
   const [newUserName, setNewUserName] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  // 选中的星期（默认今天）
-  const [selectedDay, setSelectedDay] = useState<number>(new Date().getDay());
 
   // 加载训练记录
   useEffect(() => {
@@ -43,42 +100,18 @@ const Home: React.FC = () => {
     }
   }, [currentUser]);
 
-  // 周看板数据
-  const todayJsDay = new Date().getDay(); // 0=周日, 1=周一...6=周六
-  const weekDays = [
-    { label: '周一', jsDay: 1 },
-    { label: '周二', jsDay: 2 },
-    { label: '周三', jsDay: 3 },
-    { label: '周四', jsDay: 4 },
-    { label: '周五', jsDay: 5 },
-    { label: '周六', jsDay: 6 },
-    { label: '周日', jsDay: 0 },
-  ];
-
-  /**
-   * 获取指定星期几的训练计划
-   * @param jsDay - JavaScript 的星期几（0=周日, 1=周一...6=周六）
-   * @returns 该日的训练计划列表
-   */
-  const getPlansForDay = (jsDay: number): TrainingPlan[] => {
-    return plans.filter(p => p.dayOfWeek?.includes(jsDay));
-  };
-
-  /**
-   * 获取指定日期的训练记录
-   * @param jsDay - JavaScript 的星期几
-   * @returns 该日的训练记录
-   */
-  const getSessionsForDay = (jsDay: number): TrainingSession[] => {
-    // 计算该星期几对应的日期
-    const today = new Date();
-    const currentDay = today.getDay();
-    const diff = jsDay - currentDay;
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + diff);
-    const dateStr = targetDate.toISOString().split('T')[0];
-    
-    return sessions.filter(s => s.date === dateStr);
+  // 获取今日训练计划（只取第一个，单日单计划）
+  const todayJsDay = new Date().getDay();
+  const todayPlans = plans.filter(p => p.dayOfWeek?.includes(todayJsDay)).slice(0, 1);
+  const todaySessions = sessions.filter(s => s.date === new Date().toISOString().split('T')[0]);
+  
+  // 获取当前时段
+  const currentMealType = getCurrentMealType();
+  const mealTypeLabels: Record<string, string> = {
+    breakfast: '早餐',
+    lunch: '午餐',
+    dinner: '晚餐',
+    snack: '加餐',
   };
 
   /**
@@ -139,6 +172,24 @@ const Home: React.FC = () => {
         );
       default:
         return null;
+    }
+  };
+
+  /**
+   * 获取食物详情
+   */
+  const getFoodById = (foodId: string) => {
+    return foodDatabase.find(f => f.id === foodId);
+  };
+
+  /**
+   * 处理餐食打卡
+   */
+  const handleMealCheckIn = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    if (completedMeals[mealType]) {
+      uncheckInMeal(mealType);
+    } else {
+      checkInMeal(mealType);
     }
   };
 
@@ -321,236 +372,170 @@ const Home: React.FC = () => {
 
       {/* 主体内容 */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {/* 训练周看板 */}
+        {/* 今日概览模块（训练+饮食合并） */}
         <section className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-            <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">本周训练</h2>
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="grid grid-cols-7 gap-1">
-                {weekDays.map(({ label, jsDay }) => {
-                  const dayPlans = getPlansForDay(jsDay);
-                  const isToday = jsDay === todayJsDay;
-                  const isSelected = jsDay === selectedDay;
-                  const daySessions = getSessionsForDay(jsDay);
-                  const hasCompleted = daySessions.length > 0;
-                  return (
-                    <button
-                      key={jsDay}
-                      onClick={() => setSelectedDay(jsDay)}
-                      className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all ${
-                        isSelected ? 'bg-[#007AFF]/10 ring-1 ring-[#007AFF]/30' : 'hover:bg-[#F2F2F7]'
-                      }`}
-                    >
-                      <span className={`text-xs font-medium mb-1.5 ${isSelected ? 'text-[#007AFF]' : isToday ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>
-                        {label}
-                      </span>
-                      {dayPlans.length > 0 ? (
-                        <div className="flex flex-col gap-1 w-full items-center">
-                          {dayPlans.map(plan => (
-                            <div
-                              key={plan.id}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold ${
-                                plan.type === 'push' ? 'bg-blue-100 text-blue-600' :
-                                plan.type === 'pull' ? 'bg-purple-100 text-purple-600' :
-                                'bg-green-100 text-green-600'
-                              }`}
-                              title={plan.name}
-                            >
-                              {plan.type === 'push' ? '推' : plan.type === 'pull' ? '拉' : '腿'}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="w-7 h-7 rounded-lg bg-[#F2F2F7] flex items-center justify-center">
-                          <span className="text-[10px] text-[#C7C7CC]">休</span>
-                        </div>
-                      )}
-                      {/* 训练完成标记 */}
-                      {hasCompleted && (
-                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#34C759]"></div>
-                      )}
-                    </button>
-                  );
-                })}
+          <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">今日概览</h2>
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            {/* 训练部分 */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-[#1C1C1E]">今日训练</h3>
+                {todayPlans.length === 0 && todaySessions.length === 0 && (
+                  <button
+                    onClick={() => navigate('/plans')}
+                    className="text-xs text-[#007AFF]"
+                  >
+                    去创建
+                  </button>
+                )}
               </div>
-
-              {/* 选中日期训练详情 */}
-              {(() => {
-                const selectedPlans = getPlansForDay(selectedDay);
-                const selectedSessions = getSessionsForDay(selectedDay);
-                const isToday = selectedDay === todayJsDay;
-                const dayLabel = weekDays.find(d => d.jsDay === selectedDay)?.label || '';
-                
-                if (selectedPlans.length === 0 && selectedSessions.length === 0) return null;
-                
-                return (
-                  <div className="mt-4 pt-4 border-t border-[#E5E5EA]">
-                    <p className="text-sm font-medium text-[#1C1C1E] mb-3">
-                      {isToday ? '今日训练' : `${dayLabel}训练`}
-                    </p>
-                    <div className="space-y-2">
-                      {/* 计划列表（按时间正序，未完成的在前） */}
-                      {[...selectedPlans]
-                        .sort((a, b) => {
-                          // 检查是否已完成
-                          const aCompleted = selectedSessions.some(s => s.planId === a.id);
-                          const bCompleted = selectedSessions.some(s => s.planId === b.id);
-                          // 未完成的排前面
-                          if (aCompleted === bCompleted) return 0;
-                          return aCompleted ? 1 : -1;
-                        })
-                        .map(plan => {
-                          const completedSession = selectedSessions.find(s => s.planId === plan.id);
-                          const isCompleted = !!completedSession;
-                          
+              
+              {todayPlans.length > 0 ? (
+                todayPlans.map(plan => {
+                  const completedSession = todaySessions.find(s => s.planId === plan.id);
+                  const isCompleted = !!completedSession;
+                  
+                  return (
+                    <div key={plan.id} className={`flex items-center justify-between rounded-xl p-3 ${
+                      isCompleted ? 'bg-[#34C759]/10' : 'bg-[#F2F2F7]'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[plan.type]}`}>
+                          {getTypeIcon(plan.type)}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-sm text-[#1C1C1E]">{plan.name}</h4>
+                          <p className="text-xs text-[#8E8E93]">{plan.exercises.length} 个动作</p>
+                        </div>
+                      </div>
+                      {isCompleted ? (
+                        <span className="text-xs text-[#34C759] font-medium">已完成</span>
+                      ) : (
+                        <button
+                          onClick={() => navigate(`/training?planId=${plan.id}`)}
+                          className="bg-[#007AFF] text-white text-xs font-medium px-3 py-1.5 rounded-lg"
+                        >
+                          开始
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              ) : todaySessions.length > 0 ? (
+                todaySessions.map(session => (
+                  <div key={session.id} className="flex items-center justify-between bg-[#34C759]/10 rounded-xl p-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[session.type]}`}>
+                        {getTypeIcon(session.type)}
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm text-[#1C1C1E]">{session.planName}</h4>
+                        <p className="text-xs text-[#8E8E93]">{session.exercises.length} 个动作</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-[#34C759] font-medium">已完成</span>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-[#F2F2F7] rounded-xl p-4 text-center">
+                  <p className="text-sm text-[#8E8E93]">今日暂无训练计划</p>
+                </div>
+              )}
+            </div>
+            
+            {/* 分隔线 */}
+            <div className="border-t border-[#E5E5EA] my-4"></div>
+            
+            {/* 饮食部分 */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-[#1C1C1E]">今日摄入</h3>
+                {!mealPlan?.breakfast?.length && (
+                  <button
+                    onClick={() => navigate('/plans')}
+                    className="text-xs text-[#007AFF]"
+                  >
+                    去生成
+                  </button>
+                )}
+              </div>
+              
+              {mealPlan && mealPlan.breakfast.length > 0 ? (
+                <>
+                  {/* 弧形进度 */}
+                  <div className="flex justify-center mb-4">
+                    <ArcProgress
+                      value={actualNutrition.calories.actual}
+                      max={dailyNutrition.calories.target}
+                      color="#34C759"
+                      label="kcal"
+                    />
+                  </div>
+                  
+                  {/* 当前时段餐食 + 打卡 */}
+                  <div className="bg-[#F2F2F7] rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-[#8E8E93]">当前时段</span>
+                        <p className="font-medium text-[#1C1C1E]">{mealTypeLabels[currentMealType]}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {mealPlan[currentMealType]?.length > 0 ? (
+                          <>
+                            <span className="text-xs text-[#8E8E93]">
+                              {mealPlan[currentMealType].reduce((acc: number, item: { foodId: string; amount: number }) => {
+                                const food = getFoodById(item.foodId);
+                                return acc + (food ? Math.round(food.calories * (item.amount / 100)) : 0);
+                              }, 0)} kcal
+                            </span>
+                            <button
+                              onClick={() => handleMealCheckIn(currentMealType)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                completedMeals[currentMealType]
+                                  ? 'bg-[#FF9500]/10 text-[#FF9500]'
+                                  : 'bg-[#34C759] text-white'
+                              }`}
+                            >
+                              {completedMeals[currentMealType] ? '取消' : '打卡'}
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-[#8E8E93]">无餐食</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 当前时段食物列表 */}
+                    {mealPlan[currentMealType]?.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-[#E5E5EA]">
+                        {mealPlan[currentMealType].map((item: { foodId: string; amount: number }, idx: number) => {
+                          const food = getFoodById(item.foodId);
+                          if (!food) return null;
                           return (
-                            <div key={plan.id} className={`flex items-center justify-between rounded-xl p-3 ${
-                              isCompleted ? 'bg-[#34C759]/10' : 'bg-[#F2F2F7]'
-                            }`}>
-                              <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[plan.type]}`}>
-                                  {getTypeIcon(plan.type)}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-sm text-[#1C1C1E]">{plan.name}</h4>
-                                  <p className="text-xs text-[#8E8E93]">
-                                    {isCompleted 
-                                      ? `${completedSession!.exercises.length} 个动作 · ${completedSession!.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组`
-                                      : `${plan.exercises.length} 个动作`
-                                    }
-                                  </p>
-                                </div>
+                            <div key={idx} className="flex items-center justify-between py-1">
+                              <div className="flex items-center gap-2">
+                                <span>{food.icon}</span>
+                                <span className="text-sm text-[#1C1C1E]">{food.name}</span>
                               </div>
-                              {isCompleted ? (
-                                <button
-                                  onClick={() => navigate(`/session/${completedSession!.id}`)}
-                                  className="bg-[#34C759] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
-                                >
-                                  已完成
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => navigate(`/training?planId=${plan.id}`)}
-                                  className="bg-[#007AFF] text-white text-sm font-medium px-4 py-2 rounded-lg active:scale-[0.98] transition-transform"
-                                >
-                                  开始训练
-                                </button>
-                              )}
+                              <span className="text-xs text-[#8E8E93]">{item.amount}g</span>
                             </div>
                           );
                         })}
-                      
-                      {/* 自由训练记录（不属于任何计划的） */}
-                      {selectedSessions
-                        .filter(s => !selectedPlans.some(p => p.id === s.planId))
-                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                        .map((session) => (
-                          <div
-                            key={session.id}
-                            onClick={() => navigate(`/session/${session.id}`)}
-                            className="flex items-center justify-between bg-[#34C759]/10 rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${trainingTypeIconColors[session.type]}`}>
-                                {getTypeIcon(session.type)}
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-sm text-[#1C1C1E]">{session.planName}</h4>
-                                <p className="text-xs text-[#8E8E93]">
-                                  {session.exercises.length} 个动作 · {session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0)} 组
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-xs text-[#34C759] font-medium">
-                              {new Date(session.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                );
-              })()}
-            </div>
-          </section>
-
-        {/* 本周饮食概览（V1.2.3 改造为周维度） */}
-        <section className="animate-slide-up" style={{ animationDelay: '50ms' }}>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-lg font-bold text-[#1C1C1E]">本周饮食</h2>
-            <button
-              onClick={() => navigate('/plans')}
-              className="text-sm text-[#007AFF] font-medium"
-            >
-              查看详情 &gt;
-            </button>
-          </div>
-          <div 
-            onClick={() => navigate('/plans')}
-            className="bg-white rounded-2xl p-4 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
-          >
-            {/* 周维度展示 */}
-            <div className="flex justify-between mb-4">
-              {weekDays.map((wd) => {
-                const dayPlans = getPlansForDay(wd.jsDay);
-                const daySessions = getSessionsForDay(wd.jsDay);
-                const isToday = todayJsDay === wd.jsDay;
-                
-                return (
-                  <div 
-                    key={wd.label} 
-                    className={`flex flex-col items-center p-2 rounded-xl ${
-                      isToday ? 'bg-[#007AFF]/10' : ''
-                    }`}
-                  >
-                    <span className={`text-xs ${isToday ? 'text-[#007AFF] font-medium' : 'text-[#8E8E93]'}`}>
-                      {wd.label}
-                    </span>
-                    <span className={`text-sm font-medium ${
-                      dayPlans.length > 0 
-                        ? trainingTypeTextColors[dayPlans[0]?.type] || 'text-[#8E8E93]'
-                        : 'text-[#8E8E93]'
-                    }`}>
-                      {dayPlans.length > 0 
-                        ? dayPlans[0]?.type === 'push' ? '推' 
-                        : dayPlans[0]?.type === 'pull' ? '拉' 
-                        : dayPlans[0]?.type === 'legs' ? '腿' 
-                        : '休'
-                        : '休'}
-                    </span>
-                    {/* 状态指示 */}
-                    <div className="mt-1">
-                      {daySessions.length > 0 ? (
-                        <span className="w-4 h-4 bg-[#34C759] rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </span>
-                      ) : (
-                        <span className="w-4 h-4 border border-[#E5E5EA] rounded-full" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* 今日饮食简要 */}
-            {mealPlan && mealPlan.breakfast.length > 0 ? (
-              <div className="pt-3 border-t border-[#F2F2F7]">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#8E8E93]">今日摄入</span>
-                  <span className="text-sm font-bold text-[#34C759]">{dailyNutrition.calories.actual} / {dailyNutrition.calories.target} kcal</span>
+                </>
+              ) : (
+                <div className="bg-[#F2F2F7] rounded-xl p-4 text-center">
+                  <p className="text-sm text-[#8E8E93]">今日暂无饮食计划</p>
                 </div>
-              </div>
-            ) : (
-              <div className="pt-3 border-t border-[#F2F2F7] text-center">
-                <p className="text-sm text-[#8E8E93]">暂无今日饮食数据</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </section>
 
         {/* 快捷操作 */}
-        <section className="animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <section className="animate-slide-up" style={{ animationDelay: '50ms' }}>
           <h2 className="text-lg font-bold text-[#1C1C1E] mb-3 px-1">快捷操作</h2>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -581,7 +566,7 @@ const Home: React.FC = () => {
         </section>
 
         {/* 最近训练 */}
-        <section className="animate-slide-up" style={{ animationDelay: '150ms' }}>
+        <section className="animate-slide-up" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center justify-between mb-3 px-1">
             <h2 className="text-lg font-bold text-[#1C1C1E]">最近训练</h2>
             {sessions.length > 0 && (
@@ -665,17 +650,10 @@ const Home: React.FC = () => {
         </Modal>
       )}
 
-      {/* 删除确认弹窗 */}
+      {/* 删除用户确认弹窗 */}
       {userToDelete && (
-        <Modal title="确认删除" onClose={() => setUserToDelete(null)}>
-          <div className="w-14 h-14 bg-red-50 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-7 h-7 text-[#FF3B30]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <p className="text-[#8E8E93] text-center mb-6">
-            删除用户将同时删除该用户的所有计划和训练记录，此操作不可恢复。
-          </p>
+        <Modal title="删除用户" onClose={() => setUserToDelete(null)}>
+          <p className="text-[#8E8E93] mb-6">确定要删除该用户吗？此操作无法撤销。</p>
           <div className="flex gap-3">
             <button
               onClick={() => setUserToDelete(null)}
@@ -699,22 +677,26 @@ const Home: React.FC = () => {
 /**
  * 弹窗组件
  */
-interface ModalProps {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}
-
-const Modal: React.FC<ModalProps> = ({ title, children, onClose }) => (
-  <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-fade-in" onClick={onClose}>
-    <div
-      className="bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <h2 className="text-xl font-bold text-[#1C1C1E] mb-4">{title}</h2>
-      {children}
+const Modal: React.FC<{ title: string; children: React.ReactNode; onClose: () => void }> = ({
+  title,
+  children,
+  onClose,
+}) => {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-scale-in">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[#1C1C1E]">{title}</h3>
+          <button onClick={onClose} className="text-[#8E8E93]">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default Home;

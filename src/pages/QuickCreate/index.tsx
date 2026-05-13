@@ -124,12 +124,32 @@ const QuickCreate: React.FC = () => {
   /**
    * 处理创建计划
    * 自由动作类型不需要难度级别
+   * V1.2.3 更新：单日只能创建一个计划
    */
   const handleCreatePlan = () => {
     if (!currentUser || !selectedType) return;
     
     // 自由动作类型不需要难度级别
     if (selectedType !== 'free' && !selectedLevel) return;
+
+    // 检查单日是否已有计划
+    if (selectedDays.length > 0) {
+      const existingPlans = usePlan().plans;
+      const conflictDays: string[] = [];
+      
+      selectedDays.forEach(day => {
+        const dayHasPlan = existingPlans.some(p => p.dayOfWeek?.includes(day));
+        if (dayHasPlan) {
+          const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+          conflictDays.push(dayNames[day]);
+        }
+      });
+      
+      if (conflictDays.length > 0) {
+        alert(`${conflictDays.join('、')} 已有训练计划，单日只能创建一个计划。请先删除原有计划或选择其他日期。`);
+        return;
+      }
+    }
 
     const name = planName.trim() || (selectedTemplate?.name || (selectedType === 'free' ? '自由训练' : ''));
     

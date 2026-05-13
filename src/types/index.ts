@@ -465,6 +465,16 @@ export interface DailyNutritionRanges {
 }
 
 /**
+ * 餐食完成状态（V1.2.4 新增）
+ */
+export interface CompletedMeals {
+  breakfast: boolean;
+  lunch: boolean;
+  dinner: boolean;
+  snack: boolean;
+}
+
+/**
  * 饮食记录
  */
 export interface DietRecord {
@@ -480,8 +490,10 @@ export interface DietRecord {
   dailyNutrition: DailyNutrition;
   /** 喝水量 ml */
   waterIntake: number;
-  /** 是否已打卡（V1.2.3 新增） */
+  /** 是否已打卡（V1.2.3 新增，V1.2.4 改为按餐食打卡） */
   isChecked: boolean;
+  /** 各餐食完成状态（V1.2.4 新增） */
+  completedMeals: CompletedMeals;
   /** 创建时间 */
   createdAt: number;
   /** 更新时间 */
