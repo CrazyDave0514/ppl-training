@@ -175,6 +175,50 @@ const EXERCISE_TEMPLATES: Record<string, ExperienceConfig> = {
       ],
     },
   },
+  // 初级 × 壶铃
+  'beginner_kettlebell': {
+    beginner: {
+      push: [
+        { name: '壶铃推举', sets: 3, reps: '10', weightAdvice: '选择合适重量的壶铃', targetMuscle: '三角肌前束/中束', equipment: ['kettlebell'], avoidInjuries: ['shoulder'] },
+        { name: '壶铃地板推', sets: 3, reps: '10', weightAdvice: '选择合适重量的壶铃', targetMuscle: '胸大肌', equipment: ['kettlebell'], avoidInjuries: ['shoulder'] },
+        { name: '弹力带侧平举', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '三角肌中束', equipment: ['band'], avoidInjuries: ['shoulder'] },
+      ],
+      pull: [
+        { name: '壶铃单臂划船', sets: 3, reps: '10每侧', weightAdvice: '选择合适重量的壶铃', targetMuscle: '背阔肌', equipment: ['kettlebell'], avoidInjuries: ['lower_back'] },
+        { name: '弹力带面拉', sets: 3, reps: '15', weightAdvice: '选择轻阻力弹力带', targetMuscle: '三角肌后束', equipment: ['band'], avoidInjuries: ['shoulder'] },
+        { name: '弹力带弯举', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '肱二头肌', equipment: ['band'], avoidInjuries: ['wrist'] },
+      ],
+      legs: [
+        { name: '壶铃高脚杯深蹲', sets: 3, reps: '10', weightAdvice: '选择合适重量的壶铃', targetMuscle: '股四头/臀大肌', equipment: ['kettlebell'], avoidInjuries: ['knee', 'lower_back'] },
+        { name: '壶铃硬拉', sets: 3, reps: '10', weightAdvice: '选择合适重量的壶铃', targetMuscle: '腘绳肌/臀大肌', equipment: ['kettlebell'], avoidInjuries: ['lower_back'] },
+        { name: '弹力带臀桥', sets: 3, reps: '15', weightAdvice: '选择中等阻力弹力带', targetMuscle: '臀大肌', equipment: ['band'], avoidInjuries: ['lower_back'] },
+      ],
+    },
+    intermediate: { push: [], pull: [], legs: [] },
+    advanced: { push: [], pull: [], legs: [] },
+  },
+  // 初级 × 弹力带
+  'beginner_band': {
+    beginner: {
+      push: [
+        { name: '弹力带胸前推', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '胸大肌', equipment: ['band'], avoidInjuries: ['shoulder'] },
+        { name: '弹力带侧平举', sets: 3, reps: '15', weightAdvice: '选择轻阻力弹力带', targetMuscle: '三角肌中束', equipment: ['band'], avoidInjuries: ['shoulder'] },
+        { name: '弹力带三头伸展', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '肱三头肌', equipment: ['band'], avoidInjuries: ['wrist'] },
+      ],
+      pull: [
+        { name: '弹力带高位下拉', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '背阔肌', equipment: ['band'], avoidInjuries: ['shoulder'] },
+        { name: '弹力带划船', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '背阔肌', equipment: ['band'], avoidInjuries: ['lower_back'] },
+        { name: '弹力带弯举', sets: 3, reps: '12', weightAdvice: '选择中等阻力弹力带', targetMuscle: '肱二头肌', equipment: ['band'], avoidInjuries: ['wrist'] },
+      ],
+      legs: [
+        { name: '弹力带深蹲', sets: 3, reps: '15', weightAdvice: '选择中等阻力弹力带', targetMuscle: '股四头/臀大肌', equipment: ['band'], avoidInjuries: ['knee'] },
+        { name: '弹力带臀桥', sets: 3, reps: '15', weightAdvice: '选择中等阻力弹力带', targetMuscle: '臀大肌', equipment: ['band'], avoidInjuries: ['lower_back'] },
+        { name: '弹力带侧步走', sets: 3, reps: '15每侧', weightAdvice: '选择轻阻力弹力带', targetMuscle: '臀中肌', equipment: ['band'], avoidInjuries: ['knee'] },
+      ],
+    },
+    intermediate: { push: [], pull: [], legs: [] },
+    advanced: { push: [], pull: [], legs: [] },
+  },
 };
 
 /**
@@ -184,6 +228,8 @@ function getTemplateKey(experience: string, equipment: string[]): string {
   const hasBarbell = equipment.includes('barbell');
   const hasDumbbell = equipment.includes('dumbbell');
   const hasMachine = equipment.includes('machine');
+  const hasKettlebell = equipment.includes('kettlebell');
+  const hasBand = equipment.includes('band');
   // 保留此变量用于未来扩展，当前仅检查三种主要器械
   void equipment.includes('bodyweight');
   
@@ -200,6 +246,16 @@ function getTemplateKey(experience: string, equipment: string[]): string {
   // 中级 + 哑铃
   if (experience === 'intermediate' && hasDumbbell) {
     return 'intermediate_dumbbell';
+  }
+  
+  // 初级 + 壶铃
+  if (experience === 'beginner' && hasKettlebell) {
+    return 'beginner_kettlebell';
+  }
+  
+  // 初级 + 弹力带
+  if (experience === 'beginner' && hasBand) {
+    return 'beginner_band';
   }
   
   // 初级 + 哑铃

@@ -1,5 +1,5 @@
 /**
- * 动作库数据 - 45个训练动作
+ * 动作库数据 - 45个训练动作 + 壶铃和弹力带动作
  * @description 包含 Push/Pull/Legs 三分化的所有动作
  */
 
@@ -131,6 +131,48 @@ export const exerciseLibrary: ExerciseLibraryItem[] = [
     description: '重点刺激三头肌长头',
     mediaUrl: null,
   },
+  // ==================== Push (推) - 壶铃动作 ====================
+  {
+    id: 'push-016',
+    name: '壶铃推举',
+    category: 'push',
+    targetMuscles: ['三角肌前束', '三角肌中束', '肱三头肌'],
+    description: '经典壶铃肩部训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'push-017',
+    name: '壶铃地板推',
+    category: 'push',
+    targetMuscles: ['胸大肌', '三角肌前束'],
+    description: '壶铃版本的卧推',
+    mediaUrl: null,
+  },
+  // ==================== Push (推) - 弹力带动动作 ====================
+  {
+    id: 'push-018',
+    name: '弹力带胸前推',
+    category: 'push',
+    targetMuscles: ['胸大肌', '三角肌前束'],
+    description: '弹力带胸部训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'push-019',
+    name: '弹力带侧平举',
+    category: 'push',
+    targetMuscles: ['三角肌中束'],
+    description: '弹力带肩部训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'push-020',
+    name: '弹力带三头伸展',
+    category: 'push',
+    targetMuscles: ['肱三头肌'],
+    description: '弹力带三头训练',
+    mediaUrl: null,
+  },
 
   // ==================== Pull (拉) - 15个动作 ====================
   {
@@ -253,6 +295,56 @@ export const exerciseLibrary: ExerciseLibraryItem[] = [
     description: '反握刺激下背阔',
     mediaUrl: null,
   },
+  // ==================== Pull (拉) - 壶铃动作 ====================
+  {
+    id: 'pull-016',
+    name: '壶铃单臂划船',
+    category: 'pull',
+    targetMuscles: ['背阔肌', '菱形肌'],
+    description: '壶铃划船训练背部',
+    mediaUrl: null,
+  },
+  {
+    id: 'pull-017',
+    name: '壶铃摇摆',
+    category: 'pull',
+    targetMuscles: ['髋部', '臀部', '核心'],
+    description: '全身爆发力训练',
+    mediaUrl: null,
+  },
+  // ==================== Pull (拉) - 弹力带动动作 ====================
+  {
+    id: 'pull-018',
+    name: '弹力带高位下拉',
+    category: 'pull',
+    targetMuscles: ['背阔肌'],
+    description: '弹力带背部训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'pull-019',
+    name: '弹力带划船',
+    category: 'pull',
+    targetMuscles: ['背阔肌', '菱形肌'],
+    description: '弹力带划船',
+    mediaUrl: null,
+  },
+  {
+    id: 'pull-020',
+    name: '弹力带弯举',
+    category: 'pull',
+    targetMuscles: ['肱二头肌'],
+    description: '弹力带二头训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'pull-021',
+    name: '弹力带面拉',
+    category: 'pull',
+    targetMuscles: ['三角肌后束', '菱形肌'],
+    description: '肩袖训练',
+    mediaUrl: null,
+  },
 
   // ==================== Legs (腿) - 15个动作 ====================
   {
@@ -373,6 +465,64 @@ export const exerciseLibrary: ExerciseLibraryItem[] = [
     category: 'legs',
     targetMuscles: ['臀大肌', '腘绳肌'],
     description: '自重或负重臀桥',
+    mediaUrl: null,
+  },
+  // ==================== Legs (腿) - 壶铃动作 ====================
+  {
+    id: 'legs-016',
+    name: '壶铃高脚杯深蹲',
+    category: 'legs',
+    targetMuscles: ['股四头肌', '臀大肌'],
+    description: '前举壶铃深蹲',
+    mediaUrl: null,
+  },
+  {
+    id: 'legs-017',
+    name: '壶铃硬拉',
+    category: 'legs',
+    targetMuscles: ['腘绳肌', '臀大肌', '下背部'],
+    description: '壶铃硬拉训练后侧链',
+    mediaUrl: null,
+  },
+  {
+    id: 'legs-018',
+    name: '壶铃箭步蹲',
+    category: 'legs',
+    targetMuscles: ['股四头肌', '臀大肌'],
+    description: '单侧腿部训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'legs-019',
+    name: '壶铃摆荡',
+    category: 'legs',
+    targetMuscles: ['髋部', '臀部', '核心'],
+    description: '经典壶铃动作',
+    mediaUrl: null,
+  },
+  // ==================== Legs (腿) - 弹力带动动作 ====================
+  {
+    id: 'legs-020',
+    name: '弹力带深蹲',
+    category: 'legs',
+    targetMuscles: ['股四头肌', '臀大肌'],
+    description: '弹力带腿部训练',
+    mediaUrl: null,
+  },
+  {
+    id: 'legs-021',
+    name: '弹力带臀桥',
+    category: 'legs',
+    targetMuscles: ['臀大肌', '腘绳肌'],
+    description: '弹力带臀部激活',
+    mediaUrl: null,
+  },
+  {
+    id: 'legs-022',
+    name: '弹力带侧步走',
+    category: 'legs',
+    targetMuscles: ['臀中肌', '外展肌'],
+    description: '弹力带臀部训练',
     mediaUrl: null,
   },
 ];
