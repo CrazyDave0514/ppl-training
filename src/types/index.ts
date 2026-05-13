@@ -393,6 +393,8 @@ export interface MealItem {
   foodId: string;
   /** 份量 g */
   amount: number;
+  /** 是否已完成打卡（V1.2.3 新增 - 按每道菜打卡） */
+  isCompleted?: boolean;
 }
 
 /**

@@ -1,7 +1,7 @@
 /**
  * 计划页面 - V1.2.3 重构版
  * @description 包含动作计划和饮食计划两个 Tab，支持智能计划生成
- * V1.2.3 更新：弧形进度、按餐食打卡、单日单计划限制
+ * V1.2.3 更新：周选择器、弧形进度、按每道菜打卡、单日单计划限制
  */
 
 import React, { useState } from 'react';
@@ -40,10 +40,8 @@ const mealLabels: Record<MealType, string> = {
   snack: '加餐',
 };
 
-
-
 /**
- * 多层弧形进度组件
+ * 多层弧形进度组件（小米运动健康风格）
  */
 const MultiArcProgress: React.FC<{
   nutrition: {
@@ -52,14 +50,20 @@ const MultiArcProgress: React.FC<{
     carbs: { actual: number; target: number };
     fat: { actual: number; target: number };
   };
-}> = ({ nutrition }) => {
-  const size = 240;
+  size?: number;
+}> = ({ nutrition, size = 220 }) => {
   const center = size / 2;
   const startAngle = 150;
   const endAngle = 390;
   
+  /**
+   * 角度转弧度
+   */
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   
+  /**
+   * 描述弧线路径
+   */
   const describeArc = (radius: number, start: number, end: number) => {
     const startRad = toRad(start);
     const endRad = toRad(end);
@@ -72,16 +76,16 @@ const MultiArcProgress: React.FC<{
   };
   
   const layers = [
-    { radius: 100, color: '#FF9500', value: nutrition.carbs.actual, max: nutrition.carbs.target, label: '碳水' },
-    { radius: 85, color: '#007AFF', value: nutrition.protein.actual, max: nutrition.protein.target, label: '蛋白质' },
-    { radius: 70, color: '#FF3B30', value: nutrition.fat.actual, max: nutrition.fat.target, label: '脂肪' },
-    { radius: 55, color: '#34C759', value: nutrition.calories.actual, max: nutrition.calories.target, label: '热量' },
+    { radius: 95, color: '#FF9500', value: nutrition.carbs.actual, max: nutrition.carbs.target, label: '碳水' },
+    { radius: 80, color: '#007AFF', value: nutrition.protein.actual, max: nutrition.protein.target, label: '蛋白质' },
+    { radius: 65, color: '#FF3B30', value: nutrition.fat.actual, max: nutrition.fat.target, label: '脂肪' },
+    { radius: 50, color: '#34C759', value: nutrition.calories.actual, max: nutrition.calories.target, label: '热量' },
   ];
   
   const totalAngle = endAngle - startAngle;
   
   return (
-    <div className="relative flex justify-center" style={{ width: size, height: size * 0.9 }}>
+    <div className="relative flex justify-center" style={{ width: size, height: size * 0.85 }}>
       <svg width={size} height={size} className="overflow-visible">
         {layers.map((layer, index) => {
           const progress = layer.max > 0 ? Math.min(layer.value / layer.max, 1) : 0;
@@ -98,12 +102,51 @@ const MultiArcProgress: React.FC<{
         })}
       </svg>
       {/* 中心显示总热量 */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-6">
-        <span className="text-4xl font-bold text-[#1C1C1E]">{nutrition.calories.actual}</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
+        <span className="text-3xl font-bold text-[#1C1C1E]">{nutrition.calories.actual}</span>
         <span className="text-xs text-[#8E8E93] mt-1">已摄入 kcal</span>
         <span className="text-xs text-[#34C759] mt-1">目标 {nutrition.calories.target}</span>
       </div>
     </div>
+  );
+};
+
+/**
+ * 小型弧形进度组件（用于每日进度展示）
+ */
+const SmallArcProgress: React.FC<{
+  value: number;
+  max: number;
+  color: string;
+  size?: number;
+}> = ({ value, max, color, size = 50 }) => {
+  const center = size / 2;
+  const radius = (size - 6) / 2;
+  const startAngle = 150;
+  const endAngle = 390;
+  const totalAngle = endAngle - startAngle;
+  
+  const progress = max > 0 ? Math.min(value / max, 1) : 0;
+  const currentAngle = startAngle + totalAngle * progress;
+  
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  
+  const describeArc = (start: number, end: number) => {
+    const startRad = toRad(start);
+    const endRad = toRad(end);
+    const x1 = center + radius * Math.cos(startRad);
+    const y1 = center + radius * Math.sin(startRad);
+    const x2 = center + radius * Math.cos(endRad);
+    const y2 = center + radius * Math.sin(endRad);
+    const largeArc = end - start > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+  };
+  
+  return (
+    <svg width={size} height={size * 0.7} className="overflow-visible">
+      <path d={describeArc(startAngle, endAngle)} fill="none" stroke="#E5E5EA" strokeWidth={4} strokeLinecap="round" />
+      <path d={describeArc(startAngle, currentAngle)} fill="none" stroke={color} strokeWidth={4} strokeLinecap="round" style={{ transition: 'all 0.5s ease' }} />
+    </svg>
   );
 };
 
@@ -123,9 +166,11 @@ const Plans: React.FC = () => {
     addFoodToMeal,
     removeFoodFromMeal,
     deleteDailyDietPlan,
-    checkInMeal,
-    uncheckInMeal,
-    completedMeals,
+    checkInFoodItem,
+    uncheckInFoodItem,
+    selectedDayOfWeek,
+    setSelectedDayOfWeek,
+    dietRecords,
   } = useDiet();
   
   // 当前选中的 Tab
@@ -137,8 +182,6 @@ const Plans: React.FC = () => {
   // 生成计划弹窗
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [generating, setGenerating] = useState(false);
-  
-
   
   // 餐食编辑弹窗
   const [editingMeal, setEditingMeal] = useState<MealType | null>(null);
@@ -172,8 +215,6 @@ const Plans: React.FC = () => {
    * 获取今日饮食记录
    */
   const getTodayDietRecord = () => {
-    // 从 dietRecords 中查找今日记录
-    // 这里简化处理，实际应该从 useDiet 获取
     return mealPlan && mealPlan.breakfast.length > 0;
   };
 
@@ -279,7 +320,7 @@ const Plans: React.FC = () => {
   /**
    * 计算餐食营养
    */
-  const calculateMealNutrition = (mealItems: { foodId: string; amount: number }[]) => {
+  const calculateMealNutrition = (mealItems: { foodId: string; amount: number; isCompleted?: boolean }[]) => {
     let calories = 0;
     let protein = 0;
     let carbs = 0;
@@ -318,15 +359,35 @@ const Plans: React.FC = () => {
   };
 
   /**
-   * 处理餐食打卡
+   * 处理每道菜打卡
    */
-  const handleMealCheckIn = (mealType: MealType) => {
-    if (completedMeals[mealType]) {
-      uncheckInMeal(mealType);
+  const handleFoodCheckIn = (mealType: MealType, foodIndex: number, isCompleted: boolean) => {
+    if (isCompleted) {
+      uncheckInFoodItem(mealType, foodIndex);
     } else {
-      checkInMeal(mealType);
+      checkInFoodItem(mealType, foodIndex);
     }
   };
+
+  /**
+   * 获取周日期
+   */
+  const getWeekDates = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - dayOfWeek + 1);
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + i);
+      return date;
+    });
+  };
+  
+  const weekDates = getWeekDates();
+  const todayJsDay = new Date().getDay();
+  const todayDayOfWeek = todayJsDay === 0 ? 7 : todayJsDay;
 
   return (
     <div className="min-h-screen bg-[#F2F2F7] pb-24">
@@ -505,7 +566,7 @@ const Plans: React.FC = () => {
             )}
           </>
         ) : (
-          /* 饮食计划 Tab - V1.2.3 重构：弧形进度 + 按餐食打卡 */
+          /* 饮食计划 Tab - V1.2.3 重构：周选择器 + 弧形进度 + 按每道菜打卡 */
           <>
             {/* 缺省状态：无健身档案或无训练计划 */}
             {!canGenerateDietPlan ? (
@@ -534,6 +595,73 @@ const Plans: React.FC = () => {
               </div>
             ) : (
               <>
+                {/* 周选择器 */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+                  <h3 className="font-bold text-[#1C1C1E] mb-3">本周饮食</h3>
+                  <div className="flex justify-between">
+                    {weekDates.map((date, index) => {
+                      const dayOfWeek = index + 1;
+                      const isToday = dayOfWeek === todayDayOfWeek;
+                      const isSelected = dayOfWeek === selectedDayOfWeek;
+                      const dateStr = date.toISOString().split('T')[0];
+                      const dayRecord = dietRecords.find(r => r.date === dateStr);
+                      
+                      // 计算当天的实际摄入
+                      let dayCalories = 0;
+                      let dayTarget = 2000;
+                      if (dayRecord) {
+                        dayTarget = dayRecord.dailyNutrition.calories.target;
+                        dayRecord.mealPlan.breakfast.forEach(item => {
+                          if (item.isCompleted) {
+                            const food = getFoodById(item.foodId);
+                            if (food) dayCalories += food.calories * (item.amount / 100);
+                          }
+                        });
+                        dayRecord.mealPlan.lunch.forEach(item => {
+                          if (item.isCompleted) {
+                            const food = getFoodById(item.foodId);
+                            if (food) dayCalories += food.calories * (item.amount / 100);
+                          }
+                        });
+                        dayRecord.mealPlan.dinner.forEach(item => {
+                          if (item.isCompleted) {
+                            const food = getFoodById(item.foodId);
+                            if (food) dayCalories += food.calories * (item.amount / 100);
+                          }
+                        });
+                        dayRecord.mealPlan.snack.forEach(item => {
+                          if (item.isCompleted) {
+                            const food = getFoodById(item.foodId);
+                            if (food) dayCalories += food.calories * (item.amount / 100);
+                          }
+                        });
+                      }
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => setSelectedDayOfWeek(dayOfWeek)}
+                          className={`flex flex-col items-center py-2 px-2 rounded-xl transition-all ${
+                            isSelected ? 'bg-[#34C759]/10' : ''
+                          }`}
+                        >
+                          <span className={`text-xs mb-1 ${isToday ? 'text-[#34C759] font-bold' : 'text-[#8E8E93]'}`}>
+                            {['一', '二', '三', '四', '五', '六', '日'][index]}
+                          </span>
+                          <SmallArcProgress
+                            value={Math.round(dayCalories)}
+                            max={dayTarget}
+                            color={dayRecord ? '#34C759' : '#E5E5EA'}
+                          />
+                          <span className={`text-xs mt-1 ${isToday ? 'text-[#34C759] font-bold' : 'text-[#8E8E93]'}`}>
+                            {date.getDate()}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                
                 {/* 弧形进度展示（小米运动健康风格） */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
                   <div className="flex items-center justify-between mb-4">
@@ -551,7 +679,7 @@ const Plans: React.FC = () => {
                   {mealPlan && mealPlan.breakfast.length > 0 ? (
                     <>
                       {/* 多层弧形进度 */}
-                      <div className="flex justify-center mb-6">
+                      <div className="flex justify-center mb-4">
                         <MultiArcProgress 
                           nutrition={{
                             calories: actualNutrition.calories,
@@ -562,23 +690,45 @@ const Plans: React.FC = () => {
                         />
                       </div>
                       
-                      {/* 营养素图例 */}
-                      <div className="flex justify-center gap-4 mb-4">
-                        <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-[#34C759]"></span>
-                          <span className="text-xs text-[#8E8E93]">热量</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-[#007AFF]"></span>
-                          <span className="text-xs text-[#8E8E93]">蛋白质</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-[#FF9500]"></span>
-                          <span className="text-xs text-[#8E8E93]">碳水</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-[#FF3B30]"></span>
-                          <span className="text-xs text-[#8E8E93]">脂肪</span>
+                      {/* 摄入量解释 */}
+                      <div className="bg-[#F2F2F7] rounded-xl p-3 mb-4">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-[#34C759]"></span>
+                              <span className="text-[#8E8E93]">热量</span>
+                            </div>
+                            <span className="text-[#1C1C1E] font-medium">
+                              {actualNutrition.calories.actual}/{actualNutrition.calories.target}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-[#007AFF]"></span>
+                              <span className="text-[#8E8E93]">蛋白质</span>
+                            </div>
+                            <span className="text-[#1C1C1E] font-medium">
+                              {actualNutrition.protein.actual}/{actualNutrition.protein.target}g
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-[#FF9500]"></span>
+                              <span className="text-[#8E8E93]">碳水</span>
+                            </div>
+                            <span className="text-[#1C1C1E] font-medium">
+                              {actualNutrition.carbs.actual}/{actualNutrition.carbs.target}g
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-[#FF3B30]"></span>
+                              <span className="text-[#8E8E93]">脂肪</span>
+                            </div>
+                            <span className="text-[#1C1C1E] font-medium">
+                              {actualNutrition.fat.actual}/{actualNutrition.fat.target}g
+                            </span>
+                          </div>
                         </div>
                       </div>
                       
@@ -608,41 +758,30 @@ const Plans: React.FC = () => {
                   )}
                 </div>
                 
-                {/* 餐食列表 + 打卡 */}
+                {/* 餐食列表 + 每道菜打卡 */}
                 {mealPlan && mealPlan.breakfast.length > 0 && (
                   <div className="space-y-3">
                     {(['breakfast', 'lunch', 'dinner', 'snack'] as MealType[]).map((mealType) => {
                       const mealItems = mealPlan[mealType];
                       const nutrition = calculateMealNutrition(mealItems);
-                      const isCompleted = completedMeals[mealType];
+                      
+                      // 计算已完成的菜品数
+                      const completedCount = mealItems.filter(item => item.isCompleted).length;
                       
                       return (
-                        <div key={mealType} className={`bg-white rounded-2xl p-4 shadow-sm ${isCompleted ? 'opacity-75' : ''}`}>
+                        <div key={mealType} className="bg-white rounded-2xl p-4 shadow-sm">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                               <h4 className="font-bold text-[#1C1C1E]">{mealLabels[mealType]}</h4>
-                              {isCompleted && (
+                              {completedCount > 0 && (
                                 <span className="text-xs bg-[#34C759] text-white px-2 py-0.5 rounded-full">
-                                  已完成
+                                  {completedCount}/{mealItems.length}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-[#8E8E93]">
-                                {nutrition.calories} kcal
-                              </span>
-                              {/* 打卡按钮 */}
-                              <button
-                                onClick={() => handleMealCheckIn(mealType)}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                                  isCompleted
-                                    ? 'bg-[#FF9500]/10 text-[#FF9500]'
-                                    : 'bg-[#34C759] text-white'
-                                }`}
-                              >
-                                {isCompleted ? '取消' : '打卡'}
-                              </button>
-                            </div>
+                            <span className="text-sm text-[#8E8E93]">
+                              {nutrition.calories} kcal
+                            </span>
                           </div>
                           
                           {mealItems.length > 0 ? (
@@ -650,17 +789,37 @@ const Plans: React.FC = () => {
                               {mealItems.map((item, idx) => {
                                 const food = getFoodById(item.foodId);
                                 if (!food) return null;
+                                const isCompleted = item.isCompleted || false;
+                                
                                 return (
-                                  <div key={idx} className="flex items-center justify-between py-2 border-b border-[#F2F2F7] last:border-0">
+                                  <div 
+                                    key={idx} 
+                                    className={`flex items-center justify-between py-2 px-3 rounded-lg ${
+                                      isCompleted ? 'bg-[#34C759]/10' : 'bg-[#F2F2F7]'
+                                    }`}
+                                  >
                                     <div className="flex items-center gap-2">
                                       <span className="text-lg">{food.icon}</span>
-                                      <span className="text-sm text-[#1C1C1E]">{food.name}</span>
+                                      <div>
+                                        <span className="text-sm text-[#1C1C1E]">{food.name}</span>
+                                        <span className="text-xs text-[#8E8E93] ml-1">{item.amount}g</span>
+                                      </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-xs text-[#8E8E93]">{item.amount}g</span>
                                       <span className="text-xs text-[#8E8E93]">
                                         {Math.round(food.calories * (item.amount / 100))} kcal
                                       </span>
+                                      {/* 每道菜单独打卡按钮 */}
+                                      <button
+                                        onClick={() => handleFoodCheckIn(mealType, idx, isCompleted)}
+                                        className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                                          isCompleted 
+                                            ? 'bg-[#FF9500]/10 text-[#FF9500]' 
+                                            : 'bg-[#34C759] text-white'
+                                        }`}
+                                      >
+                                        {isCompleted ? '取消' : '打卡'}
+                                      </button>
                                       <button
                                         onClick={() => handleRemoveFood(mealType, idx)}
                                         className="text-[#FF3B30] p-1"

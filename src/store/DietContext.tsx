@@ -75,9 +75,9 @@ interface DietContextType {
   // 删除单日饮食计划
   deleteDailyDietPlan: (date: string) => void;
   
-  // 打卡功能（V1.2.3 更新 - 按餐食打卡）
-  checkInMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
-  uncheckInMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+  // 打卡功能（V1.2.3 更新 - 按每道菜打卡）
+  checkInFoodItem: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodIndex: number) => void;
+  uncheckInFoodItem: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodIndex: number) => void;
   isCheckedIn: boolean;
   completedMeals: CompletedMeals;
   actualNutrition: DailyNutrition;
@@ -197,11 +197,10 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
   }, [refreshDietRecords]);
 
   /**
-   * 计算实际摄入营养（根据已完成餐食）
+   * 计算实际摄入营养（根据每道菜的 isCompleted 状态）
    */
   const calculateActualNutrition = useCallback((
     mealPlan: MealPlan,
-    completed: CompletedMeals,
     targets: DailyNutrition
   ): DailyNutrition => {
     const mealTypes: (keyof MealPlan)[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -211,8 +210,9 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     let actualFat = 0;
     
     mealTypes.forEach(mealType => {
-      if (completed[mealType]) {
-        mealPlan[mealType].forEach(item => {
+      mealPlan[mealType].forEach(item => {
+        // 只有已打卡的菜才计入实际摄入
+        if (item.isCompleted) {
           const food = getFoodById(item.foodId);
           if (food) {
             const ratio = item.amount / 100;
@@ -221,8 +221,8 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
             actualCarbs += food.carbs * ratio;
             actualFat += food.fat * ratio;
           }
-        });
-      }
+        }
+      });
     });
     
     return {
@@ -273,7 +273,7 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
       setMealPlan(record.mealPlan);
       setDailyNutrition(record.dailyNutrition);
       // 计算实际摄入
-      const actual = calculateActualNutrition(record.mealPlan, mealsStatus, record.dailyNutrition);
+      const actual = calculateActualNutrition(record.mealPlan, record.dailyNutrition);
       setActualNutrition(actual);
     } else {
       // 如果没有记录，创建空计划
@@ -583,10 +583,11 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
   }, [currentDate, refreshDietRecords]);
 
   /**
-   * 按餐食打卡（V1.2.3 更新 - 支持单餐打卡）
+   * 按每道菜打卡（V1.2.3 更新）
    */
-  const checkInMeal = useCallback((
-    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  const checkInFoodItem = useCallback((
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    foodIndex: number
   ) => {
     const dateStr = getDateString(currentDate);
     const existingRecord = dietRecords.find(r => r.date === dateStr);
@@ -594,38 +595,36 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     
     if (!currentUser || !existingRecord) return;
     
-    // 更新该餐完成状态
-    const newCompletedMeals = {
-      ...completedMeals,
-      [mealType]: true,
+    // 更新该道菜的完成状态
+    const newMealPlan = { ...existingRecord.mealPlan };
+    newMealPlan[mealType] = [...existingRecord.mealPlan[mealType]];
+    newMealPlan[mealType][foodIndex] = {
+      ...newMealPlan[mealType][foodIndex],
+      isCompleted: true,
     };
-    
-    // 检查是否所有餐都已完成
-    const allCompleted = Object.values(newCompletedMeals).every(v => v);
     
     const updatedRecord: DietRecord = {
       ...existingRecord,
-      completedMeals: newCompletedMeals,
-      isChecked: allCompleted,
+      mealPlan: newMealPlan,
       updatedAt: Date.now(),
     };
     
     updateDietRecord(currentUser.id, dateStr, updatedRecord);
-    setCompletedMeals(newCompletedMeals);
-    setIsCheckedIn(allCompleted);
+    setMealPlan(newMealPlan);
     
     // 重新计算实际摄入
-    const actual = calculateActualNutrition(existingRecord.mealPlan, newCompletedMeals, existingRecord.dailyNutrition);
+    const actual = calculateActualNutrition(newMealPlan, existingRecord.dailyNutrition);
     setActualNutrition(actual);
     
     refreshDietRecords();
-  }, [currentDate, dietRecords, completedMeals, calculateActualNutrition, refreshDietRecords]);
+  }, [currentDate, dietRecords, calculateActualNutrition, refreshDietRecords]);
 
   /**
-   * 取消单餐打卡（V1.2.3 新增）
+   * 取消每道菜打卡（V1.2.3 新增）
    */
-  const uncheckInMeal = useCallback((
-    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  const uncheckInFoodItem = useCallback((
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    foodIndex: number
   ) => {
     const dateStr = getDateString(currentDate);
     const existingRecord = dietRecords.find(r => r.date === dateStr);
@@ -633,29 +632,29 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     
     if (!currentUser || !existingRecord) return;
     
-    // 更新该餐完成状态
-    const newCompletedMeals = {
-      ...completedMeals,
-      [mealType]: false,
+    // 更新该道菜的完成状态
+    const newMealPlan = { ...existingRecord.mealPlan };
+    newMealPlan[mealType] = [...existingRecord.mealPlan[mealType]];
+    newMealPlan[mealType][foodIndex] = {
+      ...newMealPlan[mealType][foodIndex],
+      isCompleted: false,
     };
     
     const updatedRecord: DietRecord = {
       ...existingRecord,
-      completedMeals: newCompletedMeals,
-      isChecked: false,
+      mealPlan: newMealPlan,
       updatedAt: Date.now(),
     };
     
     updateDietRecord(currentUser.id, dateStr, updatedRecord);
-    setCompletedMeals(newCompletedMeals);
-    setIsCheckedIn(false);
+    setMealPlan(newMealPlan);
     
     // 重新计算实际摄入
-    const actual = calculateActualNutrition(existingRecord.mealPlan, newCompletedMeals, existingRecord.dailyNutrition);
+    const actual = calculateActualNutrition(newMealPlan, existingRecord.dailyNutrition);
     setActualNutrition(actual);
     
     refreshDietRecords();
-  }, [currentDate, dietRecords, completedMeals, calculateActualNutrition, refreshDietRecords]);
+  }, [currentDate, dietRecords, calculateActualNutrition, refreshDietRecords]);
 
   /**
    * 获取当前时段（根据时间判断）
@@ -721,8 +720,8 @@ export function DietProvider({ children }: { children: React.ReactNode }) {
     removeFoodFromMeal,
     updateFoodAmount,
     deleteDailyDietPlan,
-    checkInMeal,
-    uncheckInMeal,
+    checkInFoodItem,
+    uncheckInFoodItem,
     isCheckedIn,
     completedMeals,
     actualNutrition,
