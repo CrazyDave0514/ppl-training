@@ -106,9 +106,9 @@ const MultiArcProgress: React.FC<{
           );
         })}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
-        <span className="text-3xl font-bold text-[#1C1C1E]">{nutrition.calories.actual}</span>
-        <span className="text-xs text-[#8E8E93] mt-0.5">/ {nutrition.calories.target} kcal</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ paddingTop: '8px' }}>
+        <span className="text-2xl font-bold text-[#1C1C1E] leading-tight">{nutrition.calories.actual}</span>
+        <span className="text-[10px] text-[#8E8E93] mt-0.5 leading-tight">/ {nutrition.calories.target} kcal</span>
       </div>
     </div>
   );
@@ -155,11 +155,12 @@ const Plans: React.FC = () => {
   const displayPlans = currentUser ? plans : [];
   const canGenerateDietPlan = hasProfile && plans.length > 0;
 
-  /** 获取当前日期字符串 */
-  const getTodayDateString = () => new Date().toISOString().split('T')[0];
-
-  /** 获取今日是否有饮食记录 */
-  const getTodayDietRecord = () => mealPlan && mealPlan.breakfast.length > 0;
+  /** 获取选中的日期是否有饮食记录 */
+  const getSelectedDayDietRecord = () => {
+    const dateStr = weekDates[selectedDayOfWeek - 1].toISOString().split('T')[0];
+    const record = dietRecords.find(r => r.date === dateStr);
+    return record && record.mealPlan && record.mealPlan.breakfast.length > 0;
+  };
 
   /** 获取食物详情 */
   const getFoodById = (foodId: string) => foodDatabase.find(f => f.id === foodId);
@@ -253,9 +254,10 @@ const Plans: React.FC = () => {
     alert('本周饮食计划已生成！');
   };
 
-  /** 删除饮食计划 */
+  /** 删除饮食计划 - 删除选中的日期 */
   const handleDeleteDietPlan = () => {
-    deleteDailyDietPlan(getTodayDateString());
+    const dateStr = weekDates[selectedDayOfWeek - 1].toISOString().split('T')[0];
+    deleteDailyDietPlan(dateStr);
     setShowDeleteDietModal(false);
   };
 
@@ -435,7 +437,7 @@ const Plans: React.FC = () => {
                   {/* 标题行 */}
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold text-[#1C1C1E]">{getSelectedDayLabel()}饮食</h3>
-                    {getTodayDietRecord() && (
+                    {getSelectedDayDietRecord() && (
                       <button onClick={() => setShowDeleteDietModal(true)} className="text-sm text-[#FF3B30] font-medium">删除计划</button>
                     )}
                   </div>
@@ -489,11 +491,11 @@ const Plans: React.FC = () => {
                           <span className={`text-[10px] mb-1 ${isToday ? 'text-[#34C759] font-bold' : 'text-[#8E8E93]'}`}>
                             {['一', '二', '三', '四', '五', '六', '日'][index]}
                           </span>
-                          {/* 小圆点进度指示 */}
+                          {/* 小圆点进度指示 - 根据实际打卡进度显示颜色 */}
                           <div className="relative w-6 h-6 mb-1">
                             <svg viewBox="0 0 24 24" className="w-6 h-6 -rotate-90">
                               <circle cx="12" cy="12" r="9" fill="none" stroke="#E5E5EA" strokeWidth="3" />
-                              <circle cx="12" cy="12" r="9" fill="none" stroke={dayRecord ? '#34C759' : '#E5E5EA'} strokeWidth="3" strokeLinecap="round"
+                              <circle cx="12" cy="12" r="9" fill="none" stroke={progress > 0 ? '#34C759' : '#E5E5EA'} strokeWidth="3" strokeLinecap="round"
                                 strokeDasharray={`${2 * Math.PI * 9 * progress} ${2 * Math.PI * 9}`}
                                 style={{ transition: 'all 0.5s ease' }}
                               />
